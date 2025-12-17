@@ -1,0 +1,130 @@
+---
+clusterName: kubernetes
+
+talosVersion: "${talosVersion}"
+kubernetesVersion: "${kubernetesVersion}"
+
+endpoint: https://192.168.6.9:6443
+additionalApiServerCertSans: &sans
+  - "127.0.0.1"
+  - "192.168.6.9"
+additionalMachineCertSans: *sans
+
+clusterPodNets: ["10.42.0.0/16"]
+clusterSvcNets: ["10.43.0.0/16"]
+
+# Disable built-in CNI to use Cilium
+cniConfig:
+  name: none
+
+nodes:
+  - hostname: "k8s-master-01"
+    ipAddress: "192.168.6.1"
+    installDiskSelector:
+      serial: "S3ESNX0K138724Y"
+    machineSpec:
+      secureboot: true
+    talosImageURL: factory.talos.dev/installer-secureboot/039535a70c3bd1667c355eca78571267704e55c8a24785033d183b8f26e39d82
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "a4:ae:11:1c:2f:52"
+        dhcp: false
+        addresses:
+          - "192.168.6.1/24"
+        routes:
+          - network: "0.0.0.0/0"
+            gateway: "192.168.6.1"
+        mtu: 1500
+        vip:
+          ip: "192.168.6.9"
+  - hostname: "k8s-master-02"
+    ipAddress: "192.168.6.2"
+    installDiskSelector:
+      serial: "S4EVNM0WA01007E"
+    machineSpec:
+      secureboot: true
+    talosImageURL: factory.talos.dev/installer-secureboot/9c1d1b442d73f96dcd04e81463eb20000ab014062d22e1b083e1773336bc1dd5
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "08:bf:b8:6a:a3:b3"
+        dhcp: false
+        addresses:
+          - "192.168.6.2/24"
+        routes:
+          - network: "0.0.0.0/0"
+            gateway: "192.168.6.1"
+        mtu: 1500
+        vip:
+          ip: "192.168.6.9"
+  - hostname: "k8s-master-03"
+    ipAddress: "192.168.6.3"
+    installDiskSelector:
+      serial: "S3ESNX0K138718P"
+    machineSpec:
+      secureboot: true
+    talosImageURL: factory.talos.dev/installer-secureboot/9c1d1b442d73f96dcd04e81463eb20000ab014062d22e1b083e1773336bc1dd5
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "7c:10:c9:50:21:f6"
+        dhcp: false
+        addresses:
+          - "192.168.6.3/24"
+        routes:
+          - network: "0.0.0.0/0"
+            gateway: "192.168.6.1"
+        mtu: 1500
+        vip:
+          ip: "192.168.6.9"
+  - hostname: "k8s-worker-01"
+    ipAddress: "192.168.6.11"
+    installDiskSelector:
+      serial: "202982290001285522FF"
+    machineSpec:
+      secureboot: true
+    talosImageURL: factory.talos.dev/installer-secureboot/9c1d1b442d73f96dcd04e81463eb20000ab014062d22e1b083e1773336bc1dd5
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "2c:f0:5d:39:0a:98"
+        dhcp: false
+        addresses:
+          - "192.168.6.11/24"
+        routes:
+          - network: "0.0.0.0/0"
+            gateway: "192.168.6.1"
+        mtu: 1500
+  - hostname: "k8s-worker-02"
+    ipAddress: "192.168.6.12"
+    installDiskSelector:
+      serial: "S78HNL0X704906K"
+    machineSpec:
+      secureboot: false
+    talosImageURL: factory.talos.dev/installer/039535a70c3bd1667c355eca78571267704e55c8a24785033d183b8f26e39d82
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "cc:28:aa:47:a5:56"
+        dhcp: false
+        addresses:
+          - "192.168.6.12/24"
+        routes:
+          - network: "0.0.0.0/0"
+            gateway: "192.168.6.1"
+        mtu: 1500
+
+# Global patches
+patches:
+  - "@./patches/global/machine-files.yaml"
+  - "@./patches/global/machine-kubelet.yaml"
+  - "@./patches/global/machine-network.yaml"
+  - "@./patches/global/machine-sysctls.yaml"
+  - "@./patches/global/machine-time.yaml"
+
+# Controller patches
+controlPlane:
+  patches:
+    - "@./patches/controller/cluster.yaml"
+

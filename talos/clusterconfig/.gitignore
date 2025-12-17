@@ -1,0 +1,6 @@
+kubernetes-k8s-master-01.yaml
+kubernetes-k8s-master-02.yaml
+kubernetes-k8s-master-03.yaml
+kubernetes-k8s-worker-01.yaml
+kubernetes-k8s-worker-02.yaml
+talosconfig
