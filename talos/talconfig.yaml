@@ -7,7 +7,6 @@ kubernetesVersion: "${kubernetesVersion}"
 endpoint: https://192.168.6.9:6443
 additionalApiServerCertSans: &sans
   - "127.0.0.1"
-  - "192.168.6.9"
 additionalMachineCertSans: *sans
 
 clusterPodNets: ["10.42.0.0/16"]
@@ -29,12 +28,7 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "a4:ae:11:1c:2f:52"
-        dhcp: false
-        addresses:
-          - "192.168.6.1/24"
-        routes:
-          - network: "0.0.0.0/0"
-            gateway: "192.168.6.1"
+        dhcp: true
         mtu: 1500
         vip:
           ip: "192.168.6.9"
@@ -49,12 +43,7 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "08:bf:b8:6a:a3:b3"
-        dhcp: false
-        addresses:
-          - "192.168.6.2/24"
-        routes:
-          - network: "0.0.0.0/0"
-            gateway: "192.168.6.1"
+        dhcp: true
         mtu: 1500
         vip:
           ip: "192.168.6.9"
@@ -69,12 +58,7 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "7c:10:c9:50:21:f6"
-        dhcp: false
-        addresses:
-          - "192.168.6.3/24"
-        routes:
-          - network: "0.0.0.0/0"
-            gateway: "192.168.6.1"
+        dhcp: true
         mtu: 1500
         vip:
           ip: "192.168.6.9"
@@ -89,12 +73,7 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "2c:f0:5d:39:0a:98"
-        dhcp: false
-        addresses:
-          - "192.168.6.11/24"
-        routes:
-          - network: "0.0.0.0/0"
-            gateway: "192.168.6.1"
+        dhcp: true
         mtu: 1500
   - hostname: "k8s-worker-02"
     ipAddress: "192.168.6.12"
@@ -107,12 +86,7 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "cc:28:aa:47:a5:56"
-        dhcp: false
-        addresses:
-          - "192.168.6.12/24"
-        routes:
-          - network: "0.0.0.0/0"
-            gateway: "192.168.6.1"
+        dhcp: true
         mtu: 1500
 
 # Global patches
@@ -127,4 +101,3 @@ patches:
 controlPlane:
   patches:
     - "@./patches/controller/cluster.yaml"
-
