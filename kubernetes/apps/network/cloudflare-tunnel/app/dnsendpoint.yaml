@@ -5,6 +5,7 @@ metadata:
   name: cloudflare-tunnel
 spec:
   endpoints:
-    - dnsName: "external.igas.dev"
+    - dnsName: external.igas.dev
       recordType: CNAME
-      targets: ["9fb841ec-3985-4fc1-a40c-844270fb8151.cfargotunnel.com"]
+      targets:
+        - 9fb841ec-3985-4fc1-a40c-844270fb8151.cfargotunnel.com
