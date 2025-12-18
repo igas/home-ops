@@ -46,12 +46,12 @@ kind: Gateway
 metadata:
   name: envoy-external
   annotations:
-    external-dns.alpha.kubernetes.io/target: external.${SECRET_DOMAIN}
+    external-dns.alpha.kubernetes.io/target: external.igas.dev
 spec:
   gatewayClassName: envoy
   infrastructure:
     annotations:
-      external-dns.alpha.kubernetes.io/hostname: external.${SECRET_DOMAIN}
+      external-dns.alpha.kubernetes.io/hostname: external.igas.dev
       lbipam.cilium.io/ips: "#{ cloudflare_gateway_addr }#"
   listeners:
     - name: http
@@ -76,12 +76,12 @@ kind: Gateway
 metadata:
   name: envoy-internal
   annotations:
-    external-dns.alpha.kubernetes.io/target: internal.${SECRET_DOMAIN}
+    external-dns.alpha.kubernetes.io/target: internal.igas.dev
 spec:
   gatewayClassName: envoy
   infrastructure:
     annotations:
-      external-dns.alpha.kubernetes.io/hostname: internal.${SECRET_DOMAIN}
+      external-dns.alpha.kubernetes.io/hostname: internal.igas.dev
       lbipam.cilium.io/ips: "#{ cluster_gateway_addr }#"
   listeners:
     - name: http
