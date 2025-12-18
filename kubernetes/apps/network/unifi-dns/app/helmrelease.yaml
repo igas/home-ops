@@ -45,7 +45,7 @@ spec:
     txtOwnerId: main
     txtPrefix: k8s.main.
     domainFilters:
-      - turbo.ac
+      - igas.dev
     serviceMonitor:
       enabled: true
     podAnnotations:
