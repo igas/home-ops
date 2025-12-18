@@ -75,6 +75,12 @@ spec:
           - name: k8s-master-02
             devices:
               - name: /dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_1TB_S4EWNX0W419279P
+          - name: k8s-master-03
+            devices:
+              - name: /dev/disk/by-id/ata-Samsung_Portable_SSD_T1_1TB_S25ENYAG700023A
+          - name: k8s-worker-02
+            devices:
+              - name: /dev/disk/by-id/ata-CT2000MX500SSD1_2435E989E9AF
     cephBlockPools:
       - name: ceph-blockpool
         spec:
