@@ -92,3 +92,10 @@ spec:
     persistence:
       config:
         existingClaim: "{{ .Release.Name }}"
+      usb:
+        enabled: true
+        type: hostPath
+        hostPathType: CharDevice
+        hostPath: /dev/serial/by-id/usb-Nabu_Casa_SkyConnect_v1.0_4e09c500037ded119331bd6c4fc49859-if00-port0
+        globalMounts:
+          - path: /dev/ttyUSB0
