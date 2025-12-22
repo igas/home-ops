@@ -67,10 +67,3 @@ spec:
           - path: /config/.venv
       tmp:
         type: emptyDir
-      # Uncomment to use hostPath for Zigbee adapter for updating firmware
-      usb:
-        enabled: true
-        type: hostPath
-        hostPath: /dev/ttyUSB0
-        globalMounts:
-          - path: /dev/ttyUSB0
