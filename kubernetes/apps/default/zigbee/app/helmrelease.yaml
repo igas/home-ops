@@ -60,9 +60,6 @@ spec:
                   periodSeconds: 10
             securityContext:
               privileged: true
-              # allowPrivilegeEscalation: false
-              # readOnlyRootFilesystem: true
-              # capabilities: {drop: ["ALL"]}
             resources:
               requests:
                 cpu: 10m
@@ -71,13 +68,6 @@ spec:
         pod:
           nodeSelector:
             skyconnect.feature.node.kubernetes.io/zigbee: "true"
-    defaultPodOptions:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-        fsGroupChangePolicy: OnRootMismatch
     service:
       app:
         ports:
