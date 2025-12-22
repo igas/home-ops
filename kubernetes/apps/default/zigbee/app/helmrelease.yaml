@@ -87,5 +87,6 @@ spec:
         enabled: true
         type: hostPath
         hostPath: /dev/ttyUSB0
+        hostPathType: CharDevice
         globalMounts:
           - path: /dev/ttyUSB0
