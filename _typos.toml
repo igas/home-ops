@@ -1,2 +1,3 @@
 [default.extend-words]
+HASS = "HASS"
 mosquitto = "mosquitto"
