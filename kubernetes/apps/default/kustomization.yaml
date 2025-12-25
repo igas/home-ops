@@ -10,6 +10,7 @@ resources:
   - ./namespace.yaml
   - ./echo/ks.yaml
   - ./mosquitto/ks.yaml
+  - ./plex/ks.yaml
   - ./prowlarr/ks.yaml
   - ./zigbee/ks.yaml
   - ./home-assistant/ks.yaml
