@@ -14,6 +14,14 @@ spec:
       bazarr:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.1.0
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
         containers:
           app:
             image:
