@@ -1,0 +1,32 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/postgresql.cnpg.io/cluster_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-18
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.1-202512220807-standard-trixie
+  primaryUpdateStrategy: unsupervised
+  storage:
+    size: 100Gi
+    storageClass: ceph-block
+  walStorage:
+    size: 50Gi
+    storageClass: ceph-block
+  superuserSecret:
+    name: cloudnative-pg-secret
+  enableSuperuserAccess: true
+  postgresql:
+    parameters:
+      max_connections: "100"
+      shared_buffers: 128MB
+      max_slot_wal_keep_size: 20GB
+      wal_keep_size: 20GB
+      max_wal_size: 30GB
+      min_wal_size: 1GB
+  resources:
+    requests:
+      cpu: 100m
+    limits:
+      memory: 2Gi
