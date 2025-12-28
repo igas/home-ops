@@ -11,8 +11,9 @@ resources:
   - ./autobrr/ks.yaml
   - ./bazarr/ks.yaml
   - ./echo/ks.yaml
+  - ./home-assistant/ks.yaml
   - ./mosquitto/ks.yaml
   - ./plex/ks.yaml
   - ./prowlarr/ks.yaml
+  - ./radarr/ks.yaml
   - ./zigbee/ks.yaml
-  - ./home-assistant/ks.yaml
