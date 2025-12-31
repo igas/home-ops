@@ -110,6 +110,26 @@ function apply_crds() {
     log info "CRDs applied successfully"
 }
 
+function apply_op() {
+    log debug "Applying 1Password secrets"
+
+    local -r secret_file="${ROOT_DIR}/bootstrap/op/onepassword-secret.yaml"
+
+    if [[ ! -f "${secret_file}" ]]; then
+        log fatal "File does not exist" "file" "${secret_file}"
+    fi
+
+    if ! secret=$(cat "${secret_file}" | op inject) || [[ -z "${secret}" ]]; then
+        log fatal "Failed to inject 1Password secrets" "file" "${secret_file}"
+    fi
+
+    if ! echo "${secret}" | kubectl apply --server-side --filename - &>/dev/null; then
+        log fatal "Failed to apply 1Password secret" "file" "${secret_file}"
+    fi
+
+    log info "1Password secrets applied successfully"
+}
+
 # Sync Helm releases
 function sync_helm_releases() {
     log debug "Syncing Helm releases"
@@ -131,11 +151,13 @@ function main() {
     check_env KUBECONFIG TALOSCONFIG
     check_cli helmfile kubectl kustomize sops talhelper yq
 
+
     # Apply resources and Helm releases
     wait_for_nodes
     apply_namespaces
     apply_sops_secrets
     apply_crds
+    apply_op
     sync_helm_releases
 
     log info "Congrats! The cluster is bootstrapped and Flux is syncing the Git repository"

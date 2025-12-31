@@ -24,15 +24,9 @@ tasks:
     preconditions:
       - msg: Unsupported bash version, run `brew install bash` to upgrade
         sh: '{{if eq OS "darwin"}}test -f /opt/homebrew/bin/bash || test -f /usr/local/bin/bash{{end}}'
+      - test -f {{.BOOTSTRAP_DIR}}/op/onepassword-secret.yaml
       - test -f {{.KUBECONFIG}}
       - test -f {{.ROOT_DIR}}/.sops.yaml
       - test -f {{.SCRIPTS_DIR}}/bootstrap-apps.sh
       - test -f {{.SOPS_AGE_KEY_FILE}}
-
-  op:
-    desc: Bootstrap 1Password secret
-    dir: '{{.BOOTSTRAP_DIR}}'
-    cmd: cat {{.BOOTSTRAP_DIR}}/op/onepassword-secret.yaml | op inject | kubectl apply -f -
-    preconditions:
-      - test -f {{.BOOTSTRAP_DIR}}/op/onepassword-secret.yaml
       - which op kubectl
