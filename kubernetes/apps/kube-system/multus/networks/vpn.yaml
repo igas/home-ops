@@ -7,13 +7,13 @@ metadata:
 spec:
   config: |-
     {
-      "cniVersion": "1.1.0",
+      "cniVersion": "0.3.1",
       "name": "vpn",
       "plugins": [
         {
-          "type": "ipvlan",
+          "type": "macvlan",
           "master": "net0.90",
-          "mode": "l2",
+          "mode": "bridge",
           "ipam": {
             "type": "static",
             "routes": [
