@@ -1,0 +1,113 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: qbittorrent
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: qbittorrent
+  interval: 1h
+  values:
+    controllers:
+      qbittorrent:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/qbittorrent
+              tag: 5.1.4@sha256:e9c2c24ad2b39fa0ee44de682bf26b14bf23cffea1de9e1f082f26caed4277f9
+            env:
+              TZ: Australia/Sydney
+              QBT_WEBUI_PORT: &port 80
+              QBT_TORRENTING_PORT: 14857
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v2/app/version
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 100m
+              limits:
+                memory: 18Gi
+    defaultPodOptions:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |-
+          [{
+            "name": "vpn",
+            "namespace": "kube-system",
+            "ips": ["192.168.90.10/24"],
+            "mac": "32:0b:d8:1f:b6:e4"
+          }]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        hostnames:
+          - q.igas.dev
+          - "{{ .Release.Name }}.igas.dev"
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+    configMaps:
+      config:
+        data:
+          .qbt.toml: |-
+            [qbittorrent]
+            addr = "http://localhost:80"
+    persistence:
+      config:
+        existingClaim: "{{ .Release.Name }}"
+      config-file:
+        type: configMap
+        identifier: config
+        globalMounts:
+          - path: /config/.qbt.toml
+            subPath: .qbt.toml
+      tmp:
+        type: emptyDir
+      media:
+        type: nfs
+        server: 192.168.3.5
+        path: /volume2/k8s/media
+        globalMounts:
+          - path: /media
+      downloads:
+        type: nfs
+        server: 192.168.3.5
+        path: /volume2/k8s/downloads
+        globalMounts:
+          - path: /downloads
