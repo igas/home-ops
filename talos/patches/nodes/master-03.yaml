@@ -1,0 +1,13 @@
+---
+apiVersion: v1alpha1
+kind: BondConfig
+name: bond0
+hardwareAddr: ce:ef:88:ae:3e:5b
+links:
+  - enp2s0
+bondMode: active-backup
+up: true
+addresses:
+    - address: 192.168.6.3/20
+routes:
+    - gateway: 192.168.1.1
