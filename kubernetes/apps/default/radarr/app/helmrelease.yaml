@@ -93,3 +93,7 @@ spec:
         type: nfs
         server: 192.168.3.5
         path: /volume2/k8s/media
+      downloads:
+        type: nfs
+        server: 192.168.3.5
+        path: /volume2/k8s/downloads
