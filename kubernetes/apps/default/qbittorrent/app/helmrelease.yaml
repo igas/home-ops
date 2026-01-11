@@ -22,7 +22,7 @@ spec:
             env:
               TZ: Australia/Sydney
               QBT_WEBUI_PORT: &port 80
-              QBT_TORRENTING_PORT: 14857
+              QBT_TORRENTING_PORT: &torrentPort 14857
             probes:
               liveness: &probes
                 enabled: true
@@ -70,6 +70,9 @@ spec:
         ports:
           http:
             port: *port
+          bittorrent:
+            port: *torrentPort
+            protocol: TCP
     route:
       app:
         hostnames:
