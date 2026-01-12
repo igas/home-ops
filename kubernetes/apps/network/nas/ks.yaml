@@ -5,7 +5,7 @@ metadata:
   name: gitea
 spec:
   interval: 1h
-  path: ./kubernetes/apps/network/gitea/app
+  path: ./kubernetes/apps/network/nas/gitea
   prune: true
   sourceRef:
     kind: GitRepository
@@ -20,7 +20,7 @@ metadata:
   name: nas
 spec:
   interval: 1h
-  path: ./kubernetes/apps/network/nas/app
+  path: ./kubernetes/apps/network/nas/nas
   prune: true
   sourceRef:
     kind: GitRepository
