@@ -91,7 +91,7 @@ spec:
       backup:
         type: nfs
         server: 192.168.3.5
-        path: /volume2/k8s/Backups/radarr
+        path: /volume2/k8s/Backups/sonarr
         globalMounts:
           - path: /config/Backups
       media:
