@@ -90,3 +90,8 @@ spec:
         hostPathType: CharDevice
         globalMounts:
           - path: /dev/ttyUSB0
+      usb2:
+        type: hostPath
+        hostPath: /dev/serial/by-id/usb-Nabu_Casa_ZBT-2_DCB4D9122B58-if00
+        globalMounts:
+          - path: /dev/ttyACM0
