@@ -8,7 +8,7 @@ spec:
   chartRef:
     kind: OCIRepository
     name: zigbee
-  interval: 1h
+  interval: 15m
   values:
     controllers:
       zigbee:
