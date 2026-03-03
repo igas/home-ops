@@ -42,7 +42,7 @@ spec:
               ZIGBEE2MQTT_CONFIG_MQTT_SERVER: mqtt://mosquitto.default.svc.cluster.local
               ZIGBEE2MQTT_CONFIG_MQTT_VERSION: 5
               ZIGBEE2MQTT_CONFIG_PERMIT_JOIN: "false"
-              ZIGBEE2MQTT_CONFIG_SERIAL_PORT: /dev/ttyUSB0
+              ZIGBEE2MQTT_CONFIG_SERIAL_PORT: /dev/ttyACM0
               ZIGBEE2MQTT_CONFIG_SERIAL_ADAPTER: ember
               # DEBUG: "zigbee-herdsman*"
             envFrom:
@@ -67,7 +67,7 @@ spec:
                 memory: 1Gi
         pod:
           nodeSelector:
-            skyconnect.feature.node.kubernetes.io/zigbee: "true"
+            nabu-casa.feature.node.kubernetes.io/zbt-2: "true"
     service:
       app:
         ports:
@@ -84,13 +84,6 @@ spec:
       config:
         existingClaim: "{{ .Release.Name }}"
       usb:
-        enabled: true
-        type: hostPath
-        hostPath: /dev/ttyUSB0
-        hostPathType: CharDevice
-        globalMounts:
-          - path: /dev/ttyUSB0
-      usb2:
         type: hostPath
         hostPath: /dev/serial/by-id/usb-Nabu_Casa_ZBT-2_DCB4D9122B58-if00
         globalMounts:
