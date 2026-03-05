@@ -14,22 +14,25 @@ spec:
       recyclarr:
         type: cronjob
         cronjob:
-          schedule: "0 0 * * *"
+          schedule: 0 0 * * *
+          backoffLimit: 0
           concurrencyPolicy: Forbid
-          successfulJobsHistoryLimit: 1
-          failedJobsHistoryLimit: 1
+          successfulJobsHistory: 1
+          failedJobsHistory: 1
+          ttlSecondsAfterFinished: 86400
         containers:
           app:
             image:
               repository: ghcr.io/recyclarr/recyclarr
-              tag: 8.3.2
-            args: ["sync"]
+              tag: 8.3.2@sha256:55afe316d3e4e4e3b9120cef7c79436b1b5311f6a18d4ef4b7653e720499c90a
             env:
               TZ: Australia/Sydney
               RECYCLARR_DATA_DIR: /tmp
             envFrom:
               - secretRef:
-                  name: recyclarr-secret
+                  name: "{{ .Release.Name }}-secret"
+            args:
+              - sync
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -39,18 +42,23 @@ spec:
                 cpu: 10m
               limits:
                 memory: 128Mi
+        pod:
+          restartPolicy: Never
     defaultPodOptions:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
     persistence:
       config:
+        existingClaim: "{{ .Release.Name }}"
+      config-file:
         type: configMap
-        name: recyclarr-configmap
+        name: "{{ .Release.Name }}-configmap"
         globalMounts:
           - path: /config/recyclarr.yml
             subPath: recyclarr.yml
-            readOnly: true
       tmp:
         type: emptyDir
