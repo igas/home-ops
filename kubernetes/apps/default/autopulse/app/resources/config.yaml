@@ -29,7 +29,7 @@ triggers:
 targets:
   plex:
     type: plex
-    url: http://plex.media.svc.cluster.local:32400
+    url: http://plex.default.svc.cluster.local:32400
     token: "{{ .PLEX_TOKEN }}"
     refresh: true
     analyze: true
