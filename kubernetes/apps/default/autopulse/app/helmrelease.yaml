@@ -21,7 +21,7 @@ spec:
               tag: 18.3.0
             envFrom:
               - secretRef:
-                  name: "{{ .Release.Name }}-secret"
+                  name: autopulse-db
         containers:
           app:
             image:
