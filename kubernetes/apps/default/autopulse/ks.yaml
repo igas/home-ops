@@ -10,12 +10,17 @@ spec:
   dependsOn:
     - name: rook-ceph-cluster
       namespace: rook-ceph
+    - name: plex
+      namespace: default
+    - name: radarr
+      namespace: default
+    - name: sonarr
+      namespace: default
   interval: 1h
   path: ./kubernetes/apps/default/autopulse/app
   postBuild:
     substitute:
       APP: autopulse
-      VOLSYNC_CAPACITY: 10Gi
   prune: true
   sourceRef:
     kind: GitRepository

@@ -9,6 +9,7 @@ components:
 resources:
   - ./namespace.yaml
   - ./autobrr/ks.yaml
+  - ./autopulse/ks.yaml
   - ./bazarr/ks.yaml
   - ./echo/ks.yaml
   - ./home-assistant/ks.yaml
