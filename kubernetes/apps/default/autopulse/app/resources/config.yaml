@@ -10,7 +10,7 @@ auth:
   password: "{{ .AUTOPULSE_PASSWORD }}"
 
 anchors:
-  - /k8s/.anchors/local.anchor
+  - /k8s/downloads
 
 opts:
   check_path: true
