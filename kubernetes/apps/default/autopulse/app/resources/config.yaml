@@ -23,8 +23,14 @@ triggers:
     type: manual
   radarr:
     type: radarr
+    rewrite:
+      from: "/k8s/media"
+      to: "/media"
   sonarr:
     type: sonarr
+    rewrite:
+      from: "/k8s/media"
+      to: "/media"
 
 targets:
   plex:
