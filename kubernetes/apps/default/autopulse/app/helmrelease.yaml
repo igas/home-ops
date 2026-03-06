@@ -30,7 +30,6 @@ spec:
             command: ["/bin/autopulse"]
             env:
               TZ: Australia/Sydney
-              RADARR__SERVER__PORT: &port 80
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
@@ -54,7 +53,7 @@ spec:
       app:
         ports:
           http:
-            port: *port
+            port: 2875
     route:
       app:
         hostnames:
