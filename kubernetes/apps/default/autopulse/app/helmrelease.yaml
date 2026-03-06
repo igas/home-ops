@@ -1,0 +1,85 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: autopulse
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: autopulse
+  interval: 1h
+  values:
+    controllers:
+      autopulse:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.3.0
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/dan-online/autopulse
+              tag: v1.5.0@sha256:f8a8a375f02ca91c6a14e22124a0b7f8e8244092d49e6c80c27b4c65aba11c28
+            command: ["/bin/autopulse"]
+            env:
+              TZ: Australia/Sydney
+              RADARR__SERVER__PORT: &port 80
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 10m
+              limits:
+                memory: 256Mi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        hostnames:
+          - "{{ .Release.Name }}.igas.dev"
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+    persistence:
+      config:
+        type: secret
+        name: "{{ .Release.Name }}-secret"
+        globalMounts:
+          - path: /app/config.yaml
+            subPath: config.yaml
+            readOnly: true
+      tmpfs:
+        type: emptyDir
+        advancedMounts:
+          autopulse:
+            app:
+              - path: /app
+                subPath: app
+              - path: /tmp
+                subPath: tmp
+      k8s:
+        type: nfs
+        server: 192.168.3.5
+        path: /volume2/k8s

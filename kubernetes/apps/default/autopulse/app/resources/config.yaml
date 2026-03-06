@@ -1,0 +1,35 @@
+---
+app:
+  hostname: 0.0.0.0
+  port: 2875
+  log_level: trace
+  database_url: postgres://{{ .AUTOPULSE_POSTGRES_USER }}:{{ .AUTOPULSE_POSTGRES_PASSWORD }}@postgres-rw.database.svc.cluster.local:5432/{{ .AUTOPULSE_POSTGRES_DB }}
+
+auth:
+  username: "{{ .AUTOPULSE_USERNAME }}"
+  password: "{{ .AUTOPULSE_PASSWORD }}"
+
+anchors:
+  - /volume2/k8s/.anchors/local.anchor
+
+opts:
+  check_path: true
+  max_retries: 5
+  default_timer_wait: 30
+  cleanup_days: 7
+
+triggers:
+  manual:
+    type: manual
+  radarr:
+    type: radarr
+  sonarr:
+    type: sonarr
+
+targets:
+  plex:
+    type: plex
+    url: http://plex.media.svc.cluster.local:32400
+    token: "{{ .PLEX_TOKEN }}"
+    refresh: true
+    analyze: true
