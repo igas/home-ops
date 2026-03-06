@@ -14,7 +14,7 @@ sonarr:
         rename: true
         standard: default
       season: default
-      series: plex-tmdb
+      series: plex-tvdb
     quality_definition:
       type: series
     quality_profiles:
