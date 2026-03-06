@@ -5,18 +5,17 @@ kind: Kustomization
 metadata:
   name: autopulse
 spec:
-  # dependsOn:
-  #   - name: plex
-  #     namespace: default
-  #   - name: radarr
-  #     namespace: default
-  #   - name: sonarr
-  #     namespace: default
+  components:
+    - ../../../../components/volsync
+  dependsOn:
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
   interval: 1h
   path: ./kubernetes/apps/default/autopulse/app
-  # postBuild:
-  #   substitute:
-  #     APP: autopulse
+  postBuild:
+    substitute:
+      APP: autopulse
+      VOLSYNC_CAPACITY: 10Gi
   prune: true
   sourceRef:
     kind: GitRepository
