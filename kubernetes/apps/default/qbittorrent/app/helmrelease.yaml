@@ -111,3 +111,7 @@ spec:
         path: /volume2/k8s/downloads
         globalMounts:
           - path: /downloads
+      k8s:
+        type: nfs
+        server: 192.168.3.5
+        path: /volume2/k8s
