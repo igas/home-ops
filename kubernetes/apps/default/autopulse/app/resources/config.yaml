@@ -10,7 +10,7 @@ auth:
   password: "{{ .AUTOPULSE_PASSWORD }}"
 
 anchors:
-  - /volume2/k8s/.anchors/local.anchor
+  - /k8s/.anchors/local.anchor
 
 opts:
   check_path: true
