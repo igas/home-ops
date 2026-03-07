@@ -41,6 +41,10 @@ libraries:
       - default: resolution
       - default: seasonal
       - default: streaming
+        template_variables:
+          originals_only: true
+          exclude: [tubi]
+          style: "white"
       - default: tmdb
       - default: universe
   "Фильмы":
