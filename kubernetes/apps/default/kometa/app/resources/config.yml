@@ -1,0 +1,26 @@
+libraries:
+  Animation:
+    collection_files:
+      - default: basic
+  Anime:
+    collection_files:
+      - default: basic
+  Movies:
+    collection_files:
+      - default: basic
+  "Фильмы":
+    collection_files:
+      - default: basic
+  "Animated series":
+    collection_files:
+      - default: basic
+  "TV Shows":
+    collection_files:
+      - default: basic
+
+plex:
+  url: http://plex.default.svc.cluster.local:32400
+  token: <<PLEX_API_KEY>>
+
+tmdb:
+  apikey: <<TMDB_API_KEY>>
