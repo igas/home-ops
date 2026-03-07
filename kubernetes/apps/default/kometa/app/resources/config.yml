@@ -1,22 +1,82 @@
 libraries:
   Animation:
     collection_files:
+      - default: aspect
+      - default: based
       - default: basic
-  Anime:
+      - default: collectionless
+      - default: content_rating_au
+      - default: country
+      - default: emmy
+      - default: golden
+      - default: oscars
+      - default: resolution
+      - default: streaming
+      - default: tmdb
+      - default: universe
+  "Anime Shows":
+    library_name: Anime
     collection_files:
       - default: basic
+      - default: network
+      - default: streaming
+    overlay_files:
+      - default: status
+  "Anime Movies":
+    library_name: Anime
+    collection_files:
+      - default: basic
+      - default: streaming
   Movies:
     collection_files:
+      - default: aspect
+      - default: based
       - default: basic
+      - default: collectionless
+      - default: content_rating_au
+      - default: country
+      - default: emmy
+      - default: golden
+      - default: oscars
+      - default: resolution
+      - default: seasonal
+      - default: streaming
+      - default: tmdb
+      - default: universe
   "Фильмы":
     collection_files:
       - default: basic
+      - default: streaming
   "Animated series":
     collection_files:
       - default: basic
+      - default: streaming
+    overlay_files:
+      - default: status
   "TV Shows":
     collection_files:
+      - default: aspect
+      - default: based
       - default: basic
+      - default: collectionless
+      - default: content_rating_au
+      - default: country
+      - default: emmy
+      - default: golden
+      - default: network
+      - default: resolution
+      - default: streaming
+      - default: tmdb
+      - default: universe
+    overlay_files:
+      - default: content_rating_au
+      - default: status
+      - default: aspect
+      - default: audio_codec
+      - default: resolution
+      - default: network
+      - default: streaming
+      - default: studio
 
 plex:
   url: http://plex.default.svc.cluster.local:32400
@@ -24,3 +84,8 @@ plex:
 
 tmdb:
   apikey: <<TMDB_API_KEY>>
+
+settings:
+  delete_below_minimum: true
+  minimum_items: 2
+  overlay_artwork_filetype: webp_lossless
