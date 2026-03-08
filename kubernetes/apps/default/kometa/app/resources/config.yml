@@ -14,6 +14,11 @@ libraries:
       - default: collectionless
       - default: content_rating_au
       - default: country
+        template_variables:
+          include:
+            - Australia
+            - Italy
+            - Russia
       - default: emmy
       - default: golden
       - default: oscars
@@ -22,7 +27,8 @@ libraries:
       - default: streaming
         template_variables:
           originals_only: true
-          exclude: [tubi]
+          exclude:
+            - tubi
           style: "white"
       - default: tmdb
       - default: universe
@@ -34,11 +40,21 @@ libraries:
       - default: collectionless
       - default: content_rating_au
       - default: country
+        template_variables:
+          include:
+            - Australia
+            - Italy
+            - Russia
       - default: emmy
       - default: golden
       - default: network
       - default: resolution
       - default: streaming
+        template_variables:
+          originals_only: true
+          exclude:
+            - tubi
+          style: "white"
       - default: tmdb
       - default: universe
     overlay_files:
