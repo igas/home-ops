@@ -14,7 +14,7 @@ libraries:
       - default: collectionless
       - default: content_rating_au
       - default: country
-        template_variables:
+        template_variables: &country_vars
           include:
             - Australia
             - Italy
@@ -25,9 +25,18 @@ libraries:
       - default: resolution
       - default: seasonal
       - default: streaming
-        template_variables:
+        template_variables: &streaming_vars
           originals_only: true
           exclude:
+            - atresplayer
+            - bet
+            - channel4
+            - crave
+            - crunchyroll
+            - filmin
+            - hayu
+            - itvx
+            - movistar
             - tubi
           style: "white"
       - default: tmdb
@@ -40,21 +49,13 @@ libraries:
       - default: collectionless
       - default: content_rating_au
       - default: country
-        template_variables:
-          include:
-            - Australia
-            - Italy
-            - Russia
+        template_variables: *country_vars
       - default: emmy
       - default: golden
       - default: network
       - default: resolution
       - default: streaming
-        template_variables:
-          originals_only: true
-          exclude:
-            - tubi
-          style: "white"
+        template_variables: *streaming_vars
       - default: tmdb
       - default: universe
     overlay_files:
@@ -82,3 +83,16 @@ settings:
   delete_below_minimum: true
   minimum_items: 2
   overlay_artwork_filetype: webp_lossless
+
+radarr:
+  url: http://radarr.default.svc.cluster.local
+  token: <<RADARR_API_KEY>>
+  add_missing: false
+  add_existing: false
+  upgrade_existing: true
+  monitor_existing: true
+  monitor: false
+  availability: released
+  quality_profile: "[SQP] SQP-1 (2160p)"
+  tag: kometa
+  search: false
