@@ -2,8 +2,6 @@ libraries:
   Anime:
     collection_files:
       - default: basic
-      - default: network
-      - default: streaming
     overlay_files:
       - default: status
   Movies:
@@ -83,16 +81,3 @@ settings:
   delete_below_minimum: true
   minimum_items: 2
   overlay_artwork_filetype: webp_lossless
-
-radarr:
-  url: http://radarr.default.svc.cluster.local
-  token: <<RADARR_API_KEY>>
-  add_missing: false
-  add_existing: false
-  upgrade_existing: true
-  monitor_existing: true
-  monitor: false
-  availability: released
-  quality_profile: "[SQP] SQP-1 (2160p)"
-  tag: kometa
-  search: false
