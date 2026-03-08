@@ -37,6 +37,7 @@ libraries:
             - movistar
             - tubi
           style: "white"
+      - default: studio
       - default: tmdb
       - default: universe
   "TV Shows":
