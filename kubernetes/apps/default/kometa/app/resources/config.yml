@@ -38,8 +38,14 @@ libraries:
             - tubi
           style: "white"
       - default: studio
+        template_variables:
+          sort_by: release.asc
+          item_radarr_tag_pixar: "pixar"
+          item_sonarr_tag_pixar: "pixar"
       - default: tmdb
       - default: universe
+    overlay_files:
+      - default: status
   "TV Shows":
     collection_files:
       - default: aspect
@@ -58,14 +64,10 @@ libraries:
       - default: tmdb
       - default: universe
     overlay_files:
-      - default: content_rating_au
       - default: status
       - default: aspect
       - default: audio_codec
       - default: resolution
-      - default: network
-      - default: streaming
-      - default: studio
   "Фильмы":
     collection_files:
       - default: basic
