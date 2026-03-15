@@ -4,6 +4,8 @@ libraries:
       - default: basic
     overlay_files:
       - default: status
+      - default: audio_codec
+      - default: resolution
   Movies:
     collection_files:
       - default: aspect
@@ -45,7 +47,8 @@ libraries:
       - default: tmdb
       - default: universe
     overlay_files:
-      - default: status
+      - default: audio_codec
+      - default: resolution
   "TV Shows":
     collection_files:
       - default: aspect
@@ -65,7 +68,6 @@ libraries:
       - default: universe
     overlay_files:
       - default: status
-      - default: aspect
       - default: audio_codec
       - default: resolution
   "Фильмы":
