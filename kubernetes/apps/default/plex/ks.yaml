@@ -18,7 +18,7 @@ spec:
     substitute:
       APP: plex
       VOLSYNC_CAPACITY: 200Gi
-      VOLSYNC_SCHEDULE: "0 10 */3 * *"
+      VOLSYNC_SCHEDULE: "CRON_TZ=Australia/Sydney 0 10 */3 * *"
   prune: true
   sourceRef:
     kind: GitRepository
