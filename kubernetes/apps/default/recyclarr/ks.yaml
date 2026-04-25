@@ -19,6 +19,7 @@ spec:
   postBuild:
     substitute:
       APP: recyclarr
+      VOLSYNC_SCHEDULE: "30 19 * * *"
   prune: true
   sourceRef:
     kind: GitRepository

@@ -21,6 +21,7 @@ spec:
   postBuild:
     substitute:
       APP: autopulse
+      VOLSYNC_SCHEDULE: "30 15 * * *"
   prune: true
   sourceRef:
     kind: GitRepository

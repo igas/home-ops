@@ -19,6 +19,7 @@ spec:
   postBuild:
     substitute:
       APP: kometa
+      VOLSYNC_SCHEDULE: "0 17 * * *"
   prune: true
   sourceRef:
     kind: GitRepository
