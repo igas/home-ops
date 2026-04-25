@@ -7,7 +7,8 @@ metadata:
 spec:
   sourcePVC: ${APP}
   trigger:
-    schedule: ${VOLSYNC_SCHEDULE:="CRON_TZ=Australia/Sydney 0 10 * * *"}
+    # Cron is UTC; 00:00 UTC = 10:00 AEST / 11:00 AEDT
+    schedule: ${VOLSYNC_SCHEDULE:="0 0 * * *"}
   restic:
     accessModes:
       - ${VOLSYNC_SNAP_ACCESSMODES:=ReadWriteOnce}
