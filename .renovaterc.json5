@@ -79,6 +79,14 @@
       matchUpdateTypes: ["minor", "patch"],
     },
     {
+      description: "Auto-merge kube-prometheus-stack chart updates",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/prometheus-community/charts/kube-prometheus-stack"],
+      automerge: true,
+      automergeType: "branch",
+      matchUpdateTypes: ["major", "minor", "patch"],
+    },
+    {
       matchUpdateTypes: ["major"],
       semanticCommitType: "feat",
       commitMessagePrefix: "{{semanticCommitType}}({{semanticCommitScope}})!:",
