@@ -63,6 +63,14 @@
       ignoreTests: true,
     },
     {
+      description: "Auto-merge Tuppr chart updates",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/home-operations/charts/tuppr"],
+      automerge: true,
+      automergeType: "branch",
+      matchUpdateTypes: ["minor", "patch"],
+    },
+    {
       matchUpdateTypes: ["major"],
       semanticCommitType: "feat",
       commitMessagePrefix: "{{semanticCommitType}}({{semanticCommitScope}})!:",
