@@ -71,6 +71,14 @@
       matchUpdateTypes: ["minor", "patch"],
     },
     {
+      description: "Auto-merge Postgres Init image updates",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/home-operations/postgres-init"],
+      automerge: true,
+      automergeType: "branch",
+      matchUpdateTypes: ["minor", "patch"],
+    },
+    {
       matchUpdateTypes: ["major"],
       semanticCommitType: "feat",
       commitMessagePrefix: "{{semanticCommitType}}({{semanticCommitScope}})!:",
