@@ -87,6 +87,14 @@
       matchUpdateTypes: ["major", "minor", "patch"],
     },
     {
+      description: "Auto-merge CloudNativePG chart patch updates",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/cloudnative-pg/charts/cloudnative-pg"],
+      automerge: true,
+      automergeType: "branch",
+      matchUpdateTypes: ["patch"],
+    },
+    {
       matchUpdateTypes: ["major"],
       semanticCommitType: "feat",
       commitMessagePrefix: "{{semanticCommitType}}({{semanticCommitScope}})!:",
