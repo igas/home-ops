@@ -18,3 +18,7 @@ spec:
     nfd:
       enabled: true
       enableNodeFeatureApi: true
+    kubeletPlugin:
+      privileged: true
+      healthMonitoring:
+        enabled: false
