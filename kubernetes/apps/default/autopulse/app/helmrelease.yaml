@@ -26,7 +26,7 @@ spec:
           app:
             image:
               repository: ghcr.io/dan-online/autopulse
-              tag: v1.6.0@sha256:c9629419e4f6133ca7630ac43b418873ca7068201f3f5c1d511f0468a59341f6
+              tag: v2.0.0@sha256:a9b37936c849b34d3473caf7d83aeddc2c39ec066e18a14a0f4164846d1e4718
             command: ["/bin/autopulse"]
             env:
               TZ: Australia/Sydney
