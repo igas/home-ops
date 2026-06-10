@@ -81,6 +81,8 @@ spec:
       fullnameOverride: node-exporter
     kube-state-metrics:
       fullnameOverride: kube-state-metrics
+      metricLabelsAllowlist:
+        - nodes=[nabu-casa.feature.node.kubernetes.io/zbt-2]
     grafana:
       enabled: false
       forceDeployDashboards: true

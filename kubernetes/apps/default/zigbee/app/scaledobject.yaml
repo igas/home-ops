@@ -18,6 +18,6 @@ spec:
     - type: prometheus
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090
-        query: probe_success{instance=~"zigbee-controller.+"}
+        query: count(kube_node_labels{label_nabu_casa_feature_node_kubernetes_io_zbt_2="true"}) or vector(0)
         threshold: "1"
         ignoreNullValues: "0"
