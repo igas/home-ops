@@ -409,7 +409,7 @@ The template uses [k8s_gateway](https://github.com/ori-edge/k8s_gateway) to prov
 External-DNS offers broad support for various DNS providers, including but not limited to:
 
 - [Pi-hole](https://github.com/kubernetes-sigs/external-dns/blob/master/docs/tutorials/pihole.md)
-- [UniFi](https://github.com/kashalls/external-dns-unifi-webhook)
+- [UniFi](https://github.com/home-operations/external-dns-unifi-webhook)
 - [Adguard Home](https://github.com/muhlba91/external-dns-provider-adguard)
 - [Bind](https://github.com/kubernetes-sigs/external-dns/blob/master/docs/tutorials/rfc2136.md)
 
