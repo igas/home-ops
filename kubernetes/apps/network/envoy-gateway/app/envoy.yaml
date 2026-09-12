@@ -47,11 +47,13 @@ metadata:
   name: envoy-external
   annotations:
     external-dns.alpha.kubernetes.io/target: external.igas.dev
+    external-dns.kubernetes.io/target: external.igas.dev
 spec:
   gatewayClassName: envoy
   infrastructure:
     annotations:
       external-dns.alpha.kubernetes.io/hostname: external.igas.dev
+      external-dns.kubernetes.io/hostname: external.igas.dev
       lbipam.cilium.io/ips: "192.168.6.6"
   listeners:
     - name: http
@@ -77,11 +79,13 @@ metadata:
   name: envoy-internal
   annotations:
     external-dns.alpha.kubernetes.io/target: internal.igas.dev
+    external-dns.kubernetes.io/target: internal.igas.dev
 spec:
   gatewayClassName: envoy
   infrastructure:
     annotations:
       external-dns.alpha.kubernetes.io/hostname: internal.igas.dev
+      external-dns.kubernetes.io/hostname: internal.igas.dev
       lbipam.cilium.io/ips: "192.168.6.7"
   listeners:
     - name: http
@@ -154,6 +158,7 @@ metadata:
   name: https-redirect
   annotations:
     external-dns.alpha.kubernetes.io/controller: none
+    external-dns.kubernetes.io/controller: none
 spec:
   parentRefs:
     - name: envoy-external
