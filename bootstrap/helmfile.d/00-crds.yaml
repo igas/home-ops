@@ -13,6 +13,8 @@ releases:
     namespace: network
     chart: oci://ghcr.io/home-operations/charts-mirror/external-dns
     version: 1.21.1
+    values:
+      - policy: sync
 
   - name: envoy-gateway
     namespace: network
