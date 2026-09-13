@@ -60,6 +60,10 @@ spec:
           AUTH_INSECURE_ROTATING_SERVICE_KEY_TYPE:
             policy: mute
       csi:
+        cephfs:
+          # Was csi.cephFSKernelMountOptions on the operator chart before v1.20.
+          # Rook writes it into the ClientProfile the CephFS driver reads.
+          kernelMountOptions: ms_mode=prefer-crc
         readAffinity:
           enabled: true
       dashboard:
