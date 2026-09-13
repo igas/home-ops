@@ -24,6 +24,11 @@ spec:
         parentRefs:
           - name: envoy-internal
             namespace: network
+    # Pin Ceph explicitly. The chart derives cephVersion and the toolbox image from
+    # cephImage, and a chart bump can otherwise carry a Ceph major (v1.20 defaults to v20).
+    cephImage:
+      repository: quay.io/ceph/ceph
+      tag: v19.2.6
     cephClusterSpec:
       cephConfig:
         global:
@@ -66,6 +71,16 @@ spec:
         osd:
           limits:
             memory: 8Gi
+      security:
+        cephx:
+          # CVE-2025-30156: rotate mon/mgr/osd/admin keys to aes256k once Ceph >= v19.2.6.
+          # Bump keyGeneration to rotate again.
+          daemon:
+            keyRotationPolicy: KeyGeneration
+            keyGeneration: 2
+          # aes256k kernel mounts need Linux 7.0+; Talos ships 6.18.
+          csi:
+            keyType: aes
       storage:
         useAllNodes: false
         useAllDevices: false
