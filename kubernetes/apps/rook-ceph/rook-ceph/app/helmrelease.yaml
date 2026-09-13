@@ -11,11 +11,11 @@ spec:
   interval: 1h
   values:
     csi:
-      cephFSKernelMountOptions: ms_mode=prefer-crc
-      # NOTE: Enable the driver and snapshotter if you want to use CephFS
-      enableCephfsDriver: false
-      enableCephfsSnapshotter: false
-      enableLiveness: true
+      # v1.20 left only the CSI image tags, installCsiOperator and this
+      # ServiceMonitor here. The driver toggles and cephFSKernelMountOptions moved
+      # out: the drivers themselves to the ceph-csi-drivers HelmRelease, the kernel
+      # mount options to cephClusterSpec.csi in the cluster HelmRelease. The chart
+      # has no values schema, so leftovers of the old keys are silently ignored.
       serviceMonitor:
         enabled: true
     image:
