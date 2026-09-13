@@ -21,6 +21,20 @@ Check what actually runs before trusting the values: this cluster has `enableCep
 
 Ceph ≥ v19.2.6 / v20.2.4 plus `spec.security.cephx.daemon.keyRotationPolicy: KeyGeneration`, `keyGeneration: 2`. Verify with `kubectl -n rook-ceph get cephcluster rook-ceph -o jsonpath='{.status.cephx}'`. CSI keys must stay `security.cephx.csi.keyType: aes` because aes256k kernel mounts need Linux 7.0+ and Talos ships 6.18; mute the four `AUTH_INSECURE_*` warnings via `healthCheck.muteHealthWarning` as onedr0p does in [#11552](https://github.com/onedr0p/home-ops/pull/11552).
 
+## HelmRelease timeout and the rollback trap (2026-09-13, #720/#722)
+
+A `cephImage` change rolls every mon, mgr and OSD and the cluster chart's health check keeps the CephCluster `Progressing` for the whole run (about 25 minutes on this cluster). The `rook-ceph-cluster` HelmRelease needs `spec.timeout: 30m`; with Flux's default 5m the upgrade "fails" and Flux rolls back, which reverts the CephCluster image and any `security.cephx` change mid-upgrade.
+
+Once rolled back, Rook sees mixed versions and takes the "more than one ceph version running, triggering upgrade" path, which has **no downgrade guard**: it will move already-upgraded daemons back to the older spec image. The only thing holding it off is the HEALTH_ERR pre-check, and after a Ceph 19.2.6+ bump that HEALTH_ERR is the CVE's own `AUTH_INSECURE_SERVICE_*` errors. So:
+
+1. Never mute those errors while the CephCluster spec is at the old image. Mute only after confirming `spec.cephVersion.image` is the new one and Flux cannot roll it back (`flux suspend hr rook-ceph-cluster -n rook-ceph`, or a HelmRelease timeout long enough).
+2. If a rollback already happened: suspend the HelmRelease, `kubectl patch` the CephCluster back to the Git-declared image and cephx block, let Rook finish to `Ready`, then `flux resume`. The v1.19.11 upgrade then passes its health check quickly because the CephCluster already matches.
+3. The errors clear by themselves once daemon keys reach generation 2; no mute is needed at all if the rollout is not interrupted.
+
+The v1.19 toolbox does not reload its keyring after the admin key rotates (`RADOS permission denied`). `kubectl -n rook-ceph rollout restart deploy/rook-ceph-tools`. The v1.20 toolbox script watches the keyring.
+
+Verification that this cluster reached: `status.cephx` generation 2 for admin/mon/mgr/osd/crashCollector/cephExporter with mgr and osd `keyType: aes256k`; csi and rbdMirrorPeer stay at generation 1 `aes`. Expect exactly four remaining warnings: `AUTH_INSECURE_CLIENT_KEY_TYPE`, `AUTH_INSECURE_KEYS_ALLOWED`, `AUTH_INSECURE_KEYS_CREATABLE`, `AUTH_INSECURE_ROTATING_SERVICE_KEY_TYPE` (the last clears after 2-3 hours).
+
 ## Health gate
 
 Before any verdict: `kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status` is `HEALTH_OK`, all OSDs up/in, PGs `active+clean`. Rook v1.20.0 supports Kubernetes v1.31–v1.36; check the release notes before letting a kubelet bump past that.
