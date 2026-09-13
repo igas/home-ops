@@ -74,7 +74,7 @@ itself cut kubelet off from the API server. `talosctl kubeconfig` also starts
 emitting `server: https://k8s.igas.dev:6443`, which puts the same DNS in the
 admin path.
 
-## Phase 1: move the endpoint, pin the issuer (done in #736)
+## Phase 1: move the endpoint, pin the issuer (applied 2026-09-13, #736)
 
 `talconfig.yaml` moves to `https://k8s.igas.dev:6443`, and
 `patches/controller/kubernetes.yaml` pins both flags with
@@ -124,9 +124,26 @@ compare:
 kubectl get --raw /metrics | grep -E '^apiserver_request_total\{.*code="401"'
 ```
 
+`talosctl get staticpodstatus` lags the apply: the READY column blanks while the
+static pod re-renders, and `kubectl wait --for=condition=Ready` can return
+against the pod that is about to be replaced. Confirm the node picked the change
+up before moving on, then wait for READY to come back True:
+
+```sh
+talosctl -n 192.168.6.1 get staticpod kube-apiserver -o yaml | grep -c 'service-account-issuer=https://k8s.igas.dev'
+```
+
 Rollback: revert the commit, `task talos:generate-config`, re-apply the nodes.
 Phase 1 never changes the issuer that tokens were signed with, so the rollback is
 as inert as the change.
+
+What the 2026-09-13 run saw: four nodes applied without a reboot, each master's
+kube-apiserver restarting once and coming back Ready, all four nodes reporting
+`endpoint: https://k8s.igas.dev:6443`, every Flux resource still ready, no pod
+out of Running, and no `apiserver_request_total{code="401"}` series. The
+`NotificationDispatchFailed` events carrying `401 Bad credentials` are a
+flux-notification GitHub token problem against the wrong repo and predate the
+apply.
 
 ## Phase 2: move the issuer (optional, not done)
 
