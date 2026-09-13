@@ -1,0 +1,9 @@
+# Project-local lazygit overrides. Loaded after the global config via
+# LG_CONFIG_FILE (see .mise.toml).
+gui:
+  showFileTree: true
+  sidePanels:
+    - [status]
+    - [files, worktrees, submodules]
+    - [branches, remotes, tags]
+    - [commits, stash]
