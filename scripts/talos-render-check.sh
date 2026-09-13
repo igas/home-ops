@@ -3,7 +3,7 @@
 #
 # Proves that talos/talconfig.yaml, talos/talenv.yaml and talos/patches/ still
 # render for the Talos and Kubernetes versions they declare. Needs talhelper
-# only: no AGE key, no cluster access. CI runs this on pull requests that touch
+# and yq only: no AGE key, no cluster access. CI runs this on pull requests that touch
 # talos/; locally it is the preflight for a Talos or kubelet bump.
 #
 # Usage:
@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-command -v talhelper >/dev/null || { echo "talhelper not found on PATH" >&2; exit 127; }
+for tool in talhelper yq; do command -v "$tool" >/dev/null || { echo "$tool not found on PATH" >&2; exit 127; }; done
 [[ -f "$TALOS_DIR/talconfig.yaml" ]] || { echo "no talconfig.yaml in $TALOS_DIR" >&2; exit 2; }
 
 WORK_DIR="$(mktemp -d)"
