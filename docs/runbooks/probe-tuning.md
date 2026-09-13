@@ -105,17 +105,31 @@ yq '.spec.values' kubernetes/apps/default/plex/app/helmrelease.yaml \
         | {"live": .livenessProbe, "ready": .readinessProbe, "startup": .startupProbe}'
 ```
 
-Then exercise the real path, a reschedule onto a cold mount, and confirm the new
-Pod reaches Ready with no restarts. k8s-worker-02 is the only worker, so check
-first that Plex's GPU ResourceClaim has somewhere else to land before draining
-it:
+Then exercise the restart path. A pod delete unmaps and remaps the RBD image
+and gives Plex an empty library cache, which is enough to prove the startup gate
+works and that normal startup is not slowed:
 
 ```bash
-kubectl drain k8s-worker-02 --ignore-daemonsets --delete-emptydir-data
-kubectl -n default get pod -l app.kubernetes.io/name=plex -w
+kubectl -n default delete pod -l app.kubernetes.io/name=plex
+kubectl -n default get pod -l app.kubernetes.io/name=plex -o wide -w
 kubectl -n default get pod -l app.kubernetes.io/name=plex \
   -o jsonpath='{.items[*].status.containerStatuses[*].restartCount}'
-kubectl uncordon k8s-worker-02
 ```
 
 `restartCount` must be `0`.
+
+That is not the incident, though. Do not reach for `kubectl drain` to get closer:
+Plex pins a `gpu.intel.com` ResourceClaim, and the only other node advertising a
+device is k8s-master-01, whose Whiskey Lake iGPU is not where Plex belongs. The
+node also carries `rook-ceph-osd-0`, which is bound to its local disk and will
+sit Pending rather than move, so a drain degrades Ceph for no benefit here.
+
+The real case, a cold RBD map with an empty host page cache and Ceph still
+settling, only occurs on a node reboot. Treat the next Talos rollout as the
+verification: after k8s-worker-02 comes back, confirm Plex reaches Ready with
+`restartCount` still `0`, and that no `Unhealthy` events were recorded:
+
+```bash
+kubectl -n default get events --sort-by=.lastTimestamp \
+  | grep -iE 'plex.*(unhealthy|killing|back-off)'
+```
