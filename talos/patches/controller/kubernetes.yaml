@@ -1,0 +1,46 @@
+# Talos 1.14 multi-document Kubernetes config. talhelper emits these kinds for
+# the 1.14 contract, so the matching v1alpha1 fields (cluster.apiServer,
+# controllerManager, scheduler, proxy) are rejected as "already set".
+# KubeClusterConfig is deliberately not used: siderolabs/talos#14338 panics
+# machined on a bootstrapped cluster.
+---
+apiVersion: v1alpha1
+kind: KubeAPIServerConfig
+# talhelper 3.1.17 (Talos machinery 1.14.0-alpha.2) drops talconfig's
+# additionalApiServerCertSans from this document, so repeat them here.
+certExtraSANs:
+  - 127.0.0.1
+  - k8s.igas.dev
+extraArgs:
+  # https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/
+  enable-aggregator-routing: "true"
+---
+# Drop the default PodSecurity admission configuration
+# (was cluster.apiServer.admissionControl: $patch: delete).
+apiVersion: v1alpha1
+kind: KubeAdmissionControlConfig
+name: PodSecurity
+$$patch: delete
+---
+apiVersion: v1alpha1
+kind: KubeControllerManagerConfig
+extraArgs:
+  bind-address: 0.0.0.0
+---
+apiVersion: v1alpha1
+kind: KubeSchedulerConfig
+extraArgs:
+  bind-address: 0.0.0.0
+---
+# Cilium replaces kube-proxy.
+apiVersion: v1alpha1
+kind: KubeProxyConfig
+enabled: false
+---
+# talhelper 3.1.17 renders this document from the alpha.2 generator, which names
+# the secretbox key "key1" and omits the identity provider. Deleting it here
+# lets kube-etcd-encryption.yaml re-add the live shape (lists append on merge,
+# and one patch file may touch a document only once).
+apiVersion: v1alpha1
+kind: KubeEtcdEncryptionConfig
+$$patch: delete

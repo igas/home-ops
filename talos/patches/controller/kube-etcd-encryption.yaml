@@ -1,0 +1,20 @@
+# Re-adds KubeEtcdEncryptionConfig after kubernetes.yaml deletes the generated
+# one. The running kube-apiserver (legacy v1alpha1 path, and the Talos 1.14.0
+# generator) uses key name "key2" plus an identity provider; talhelper 3.1.17
+# (Talos machinery 1.14.0-alpha.2) emits "key1" and no identity, and a changed
+# key name makes every existing Secret unreadable. The secret comes from
+# talenv.sops.yaml (SOPS-encrypted); scripts/talos-render-check.sh injects a
+# throwaway value. Drop this file and the delete in kubernetes.yaml once
+# talhelper vendors Talos machinery >= 1.14.0.
+apiVersion: v1alpha1
+kind: KubeEtcdEncryptionConfig
+config:
+  resources:
+    - providers:
+        - secretbox:
+            keys:
+              - name: key2
+                secret: ${secretboxEncryptionSecret}
+        - identity: {}
+      resources:
+        - secrets

@@ -3,7 +3,7 @@
 #
 # Proves that talos/talconfig.yaml, talos/talenv.yaml and talos/patches/ still
 # render for the Talos and Kubernetes versions they declare. Needs talhelper
-# only: no AGE key, no cluster access. CI runs this on pull requests that touch
+# and yq only: no AGE key, no cluster access. CI runs this on pull requests that touch
 # talos/; locally it is the preflight for a Talos or kubelet bump.
 #
 # Usage:
@@ -34,14 +34,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-command -v talhelper >/dev/null || { echo "talhelper not found on PATH" >&2; exit 127; }
+for tool in talhelper yq; do command -v "$tool" >/dev/null || { echo "$tool not found on PATH" >&2; exit 127; }; done
 [[ -f "$TALOS_DIR/talconfig.yaml" ]] || { echo "no talconfig.yaml in $TALOS_DIR" >&2; exit 2; }
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-# Copy the config only: drop rendered output and every real secret bundle so
-# talhelper cannot pick up talsecret.sops.yaml by default.
+# Copy the config only: drop rendered output and every real secret so talhelper
+# cannot pick up talsecret.sops.yaml or talenv.sops.yaml by default.
 cp -R "$TALOS_DIR"/. "$WORK_DIR"
 rm -rf "$WORK_DIR/clusterconfig" "$WORK_DIR"/talsecret*.y*ml "$WORK_DIR"/talenv.sops.y*ml
 
@@ -58,6 +58,11 @@ echo "talenv.yaml:"
 grep -E '^(talosVersion|kubernetesVersion):' "$WORK_DIR/talenv.yaml" | sed 's/^/  /'
 
 talhelper gensecret > "$WORK_DIR/talsecret.yaml"
+
+# talenv.sops.yaml carries the secretbox key for the pinned
+# KubeEtcdEncryptionConfig patch; envsubst rejects unset variables, so feed the
+# throwaway bundle's key in its place.
+echo "secretboxEncryptionSecret: $(yq '.secrets.secretboxencryptionsecret' "$WORK_DIR/talsecret.yaml")" >> "$WORK_DIR/talenv.yaml"
 
 (
   cd "$WORK_DIR"

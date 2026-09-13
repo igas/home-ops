@@ -4,7 +4,11 @@ clusterName: kubernetes
 talosVersion: "${talosVersion}"
 kubernetesVersion: "${kubernetesVersion}"
 
-endpoint: https://k8s.igas.dev:6443
+# Kept at the live value. kube-apiserver derives --service-account-issuer and
+# --api-audiences from this endpoint, so moving it to https://k8s.igas.dev:6443
+# invalidates every in-cluster service account token until rotation. Tracked as
+# a separate change.
+endpoint: https://192.168.6.1:6443
 additionalApiServerCertSans: &sans
   - "127.0.0.1"
   - "k8s.igas.dev"
@@ -94,4 +98,6 @@ patches:
 controlPlane:
   patches:
     - "@./patches/controller/cluster.yaml"
+    - "@./patches/controller/kubernetes.yaml"
+    - "@./patches/controller/kube-etcd-encryption.yaml"
     - "@./patches/controller/machine-api-access.yaml"
