@@ -1,0 +1,88 @@
+---
+# Renders the Talos machine config with talhelper on pull requests that touch
+# talos/. Throwaway secrets are generated in the job, so no repository secret
+# and no AGE key is needed. Fails with talhelper's message when the declared
+# talosVersion or kubernetesVersion rejects the current talconfig or patches.
+name: "Talos Config"
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pre-job:
+    name: Talos Config Pre-Job
+    runs-on: ubuntu-latest
+    outputs:
+      any_changed: ${{ steps.changed-files.outputs.any_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Get Changed Files
+        id: changed-files
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            talos/**
+            scripts/talos-render-check.sh
+            .github/workflows/talos.yaml
+
+  render:
+    name: Talos Config Render
+    needs: pre-job
+    runs-on: ubuntu-latest
+    if: ${{ needs.pre-job.outputs.any_changed == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install talhelper
+        # Version comes from .mise.toml so Renovate's mise bumps keep CI and
+        # local renders on the same talhelper.
+        working-directory: ${{ runner.temp }}
+        run: |
+          version="$(sed -nE 's/^"aqua:budimanjojo\/talhelper" = "([^"]+)"$/\1/p' "$GITHUB_WORKSPACE/.mise.toml")"
+          test -n "$version" || { echo "::error::talhelper version not found in .mise.toml"; exit 1; }
+          base="https://github.com/budimanjojo/talhelper/releases/download/v${version}"
+          curl -fsSLO "${base}/talhelper_linux_amd64.tar.gz"
+          curl -fsSL "${base}/checksums.txt" | grep ' talhelper_linux_amd64.tar.gz$' | sha256sum -c -
+          tar -xzf talhelper_linux_amd64.tar.gz talhelper
+          sudo install -m 0755 talhelper /usr/local/bin/talhelper
+          talhelper --version
+
+      - name: Render Talos config
+        id: render
+        run: |
+          set -o pipefail
+          scripts/talos-render-check.sh --out-dir "${RUNNER_TEMP}/clusterconfig" 2>&1 | tee "${RUNNER_TEMP}/render.log"
+
+      - name: Summary
+        if: ${{ always() && steps.render.outcome != 'skipped' }}
+        run: |
+          {
+            echo "### Talos config render: ${{ steps.render.outcome }}"
+            echo
+            echo '```'
+            cat "${RUNNER_TEMP}/render.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  talos-status:
+    name: Talos Config Success
+    needs: ["render"]
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: Any jobs failed?
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: exit 1
+
+      - name: All jobs passed or skipped?
+        if: ${{ !(contains(needs.*.result, 'failure')) }}
+        run: echo "All jobs passed or skipped" && echo "${{ toJSON(needs.*.result) }}"
