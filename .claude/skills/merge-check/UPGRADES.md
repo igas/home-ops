@@ -17,4 +17,8 @@ Best possible verdict is `safe with prep`. The **Prep** line names how to watch:
 
 ## Gotcha: kubelet bumps are gated by the *running* Talos
 
-The support matrix is enforced at runtime. tuppr uses Talos machinery, which rejects a Kubernetes minor the current Talos does not list (`unsupported upgrade path 1.36->1.37`, [home-operations/tuppr#544](https://github.com/home-operations/tuppr/issues/544)). Caught 2026-09-13 on PR #656: Talos 1.13 tops out at Kubernetes 1.36, so the kubelet 1.37 PR needs a Talos 1.14 bump merged and rolled out first. When the kubelet PR exists but the Talos one does not, check the Renovate dashboard for the `installer` entry.
+The support matrix is enforced at runtime, **server-side**. tuppr vendors newer machinery than the nodes run, but the check that matters is the one on the node: a Kubernetes minor the *running* Talos does not list fails with `unsupported upgrade path 1.36->1.37` ([home-operations/tuppr#544](https://github.com/home-operations/tuppr/issues/544), closed with exactly that finding). So read the node versions, never `talenv.yaml`, when deciding whether a kubelet bump can land.
+
+Caught 2026-09-13 on PR #656, both halves in one day: at 03:11 the nodes ran Talos 1.13.10, which tops out at Kubernetes 1.36, so the kubelet 1.37 PR was `hold` pending a Talos 1.14 bump. By 22:00 #725 had merged and tuppr's TalosUpgrade had rolled all four nodes to 1.14.0, and the same PR at the same head SHA became `safe with prep` with nothing about the PR itself changed. When a kubelet PR is blocked this way, the unblocking event is the *rollout*, not the merge — re-review after `kubectl get nodes -o wide` shows the new Talos on every node.
+
+When the kubelet PR exists but the Talos one does not, check the Renovate dashboard: since #723 Talos comes from `custom.talos-factory` as `siderolabs/talos`, not the retired `ghcr.io/siderolabs/installer` image.

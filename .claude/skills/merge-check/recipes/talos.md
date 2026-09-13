@@ -13,7 +13,9 @@ task talos:render-check TALOS_VERSION=vX.Y.Z                     # bump under re
 scripts/talos-render-check.sh --talos-version vX.Y.Z --out-dir "$S/rendered"   # same, keeping the output
 ```
 
-Render the old version too so a failure is attributable to the bump. The script copies `talos/` to a temp dir, strips `clusterconfig/` and `talsecret.sops.yaml`, overrides `talenv.yaml`, and runs `talhelper genconfig --offline-mode`.
+The script copies `talos/` to a temp dir, strips `clusterconfig/` and `talsecret.sops.yaml`, overrides `talenv.yaml`, and runs `talhelper genconfig --offline-mode`. Render the old version too so a failure is attributable to the bump. For a kubelet bump, render at the new **Kubernetes** version against the Talos version in main (`--kubernetes-version vX.Y.Z`); a clean pass whose only non-secret diff is the kubelet and the four `registry.k8s.io/kube-*` image tags is the whole preflight, so no throwaway Pod is needed.
+
+A long-lived Renovate branch can predate the workflow itself: #656 was opened 2026-08-22 and last built 2026-09-07, so `Talos Config` (added by #734) never ran on it and its `statusCheckRollup` simply has no such entry. An *absent* check is not a passing one — run the fallback locally and put a rebase in **Prep**.
 
 ## 1.14: v1alpha1 `cluster.*` patches stop merging (migrated in #731)
 
