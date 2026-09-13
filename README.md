@@ -83,7 +83,6 @@ These guidelines provide a strong baseline, but there are always exceptions and 
 
     ```sh
     mise trust
-    pip install pipx
     mise install
     ```
 
