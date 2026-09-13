@@ -40,8 +40,8 @@ command -v talhelper >/dev/null || { echo "talhelper not found on PATH" >&2; exi
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-# Copy the config only: drop rendered output and every real secret bundle so
-# talhelper cannot pick up talsecret.sops.yaml by default.
+# Copy the config only: drop rendered output and every real secret so talhelper
+# cannot pick up talsecret.sops.yaml or talenv.sops.yaml by default.
 cp -R "$TALOS_DIR"/. "$WORK_DIR"
 rm -rf "$WORK_DIR/clusterconfig" "$WORK_DIR"/talsecret*.y*ml "$WORK_DIR"/talenv.sops.y*ml
 
@@ -58,6 +58,11 @@ echo "talenv.yaml:"
 grep -E '^(talosVersion|kubernetesVersion):' "$WORK_DIR/talenv.yaml" | sed 's/^/  /'
 
 talhelper gensecret > "$WORK_DIR/talsecret.yaml"
+
+# talenv.sops.yaml carries the secretbox key for the pinned
+# KubeEtcdEncryptionConfig patch; envsubst rejects unset variables, so feed the
+# throwaway bundle's key in its place.
+echo "secretboxEncryptionSecret: $(yq '.secrets.secretboxencryptionsecret' "$WORK_DIR/talsecret.yaml")" >> "$WORK_DIR/talenv.yaml"
 
 (
   cd "$WORK_DIR"

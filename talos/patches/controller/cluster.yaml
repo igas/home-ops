@@ -1,23 +1,15 @@
+# v1alpha1 fields that stay here on Talos 1.14. The rest of the Kubernetes
+# control plane config lives in kubernetes.yaml as multi-document kinds.
 cluster:
+  # KubeNodeConfig is not registered in the Talos machinery talhelper 3.1.17
+  # vendors (1.14.0-alpha.2); move once talhelper ships 1.14.0 machinery.
   allowSchedulingOnControlPlanes: true
-  apiServer:
-    admissionControl:
-      $$patch: delete
-    extraArgs:
-      # https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/
-      enable-aggregator-routing: true
-  controllerManager:
-    extraArgs:
-      bind-address: 0.0.0.0
+  # KubeCoreDNSConfig: same talhelper limitation as above.
   coreDNS:
     disabled: true
+  # No etcd document kind exists in 1.14.
   etcd:
     extraArgs:
       listen-metrics-urls: http://0.0.0.0:2381
     advertisedSubnets:
       - 192.168.6.0/24
-  proxy:
-    disabled: true
-  scheduler:
-    extraArgs:
-      bind-address: 0.0.0.0
