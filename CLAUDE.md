@@ -67,6 +67,7 @@ kubernetes/apps/{namespace}/{app-name}/
 - **`nodes.yaml`** - Node definitions (hostnames, IPs, disks, roles)
 - **`talos/talconfig.yaml`** - Talos cluster configuration (generated from templates)
 - **`talos/talenv.yaml`** - Talos and Kubernetes version specifications
+- **`talos/talenv.sops.yaml`** - SOPS-encrypted variables substituted into Talos patches (the etcd secretbox key)
 
 ### Secret Management
 - Secrets are encrypted with SOPS using AGE encryption
