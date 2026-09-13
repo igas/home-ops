@@ -24,7 +24,12 @@ spec:
               PLEX_ADVERTISE_URL: https://plex.igas.dev:443,http://192.168.6.210:32400,http://plex.default.svc.cluster.local:32400
               PLEX_NO_AUTH_NETWORKS: 192.168.0.0/20
             probes:
-              liveness: &probes
+              # Liveness restarts the container, so it is tuned to only fire on a
+              # genuinely hung Plex: a cold library warming off remounted Ceph RBD
+              # answers /identity slowly, not never. Budget before restart is
+              # periodSeconds * failureThreshold = 150s. See
+              # docs/runbooks/probe-tuning.md.
+              liveness:
                 enabled: true
                 custom: true
                 spec:
@@ -32,15 +37,37 @@ spec:
                     path: /identity
                     port: &port 32400
                   initialDelaySeconds: 0
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 5
+              # Readiness only pulls the Pod from the Service, so it stays fast:
+              # a warming Plex should stop receiving traffic within ~30s.
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /identity
+                    port: *port
+                  initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
                   failureThreshold: 3
-              readiness: *probes
+              # The chart's default startup probe is a tcpSocket check, which
+              # passes the moment Plex binds 32400 and hands control to liveness
+              # while the library is still warming. Gate on the same /identity
+              # response the other two use, with 600s to produce the first one.
               startup:
                 enabled: true
+                custom: true
                 spec:
-                  failureThreshold: 30
+                  httpGet:
+                    path: /identity
+                    port: *port
+                  initialDelaySeconds: 0
                   periodSeconds: 10
+                  timeoutSeconds: 10
+                  failureThreshold: 60
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
