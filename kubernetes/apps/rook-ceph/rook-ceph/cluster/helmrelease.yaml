@@ -12,8 +12,10 @@ spec:
   # A Ceph image change rolls mons, mgrs and OSDs one at a time and the chart's
   # health check on the CephCluster stays InProgress until that finishes. The
   # default 5m timeout fails the upgrade and Flux rolls the CephCluster spec back
-  # mid-upgrade (seen 2026-09-13 on #720).
-  timeout: 30m
+  # mid-upgrade (seen 2026-09-13 on #720). A Ceph major (Squid -> Tentacle, #733)
+  # rolls the same daemons but converts on-disk state as it goes, so allow more
+  # than the ~25m a patch bump took.
+  timeout: 45m
   values:
     monitoring:
       enabled: true
@@ -30,10 +32,11 @@ spec:
           - name: envoy-internal
             namespace: network
     # Pin Ceph explicitly. The chart derives cephVersion and the toolbox image from
-    # cephImage, and a chart bump can otherwise carry a Ceph major (v1.20 defaults to v20).
+    # cephImage, and a chart bump can otherwise carry a Ceph major on its own (the
+    # v1.20 chart defaulted to v20 while this cluster still ran v19).
     cephImage:
       repository: quay.io/ceph/ceph
-      tag: v19.2.6
+      tag: v20.2.4
     cephClusterSpec:
       cephConfig:
         global:

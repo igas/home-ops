@@ -4,7 +4,7 @@ Two charts in one Renovate group: `rook-ceph` (operator) and `rook-ceph-cluster`
 
 ## Read the rendered diff, not the version line
 
-A chart minor can carry a Ceph **major** (the v1.20 chart defaults to v20.2.4 Tentacle while the cluster ran 19.2.3 Squid). `kubernetes/apps/rook-ceph/rook-ceph/cluster/helmrelease.yaml` pins `cephImage` since #720, so the CephCluster no longer inherits the chart default, but keep grepping the flux-local diff for `quay.io/ceph/ceph:`: a changed tag is a separate upgrade that needs its own PR.
+A chart minor can carry a Ceph **major**: the v1.20 chart defaulted to v20.2.4 Tentacle while this cluster still ran Squid, and the pin is the only reason that did not ride in on #732. `kubernetes/apps/rook-ceph/rook-ceph/cluster/helmrelease.yaml` pins `cephImage` since #720, so the CephCluster no longer inherits the chart default, but keep grepping the flux-local diff for `quay.io/ceph/ceph:`: a changed tag is a separate upgrade that needs its own PR.
 
 ## 1.19 → 1.20: CSI leaves the operator chart
 
@@ -24,7 +24,7 @@ Ceph ≥ v19.2.6 / v20.2.4 plus `spec.security.cephx.daemon.keyRotationPolicy: K
 
 ## HelmRelease timeout and the rollback trap (2026-09-13, #720/#722)
 
-A `cephImage` change rolls every mon, mgr and OSD and the cluster chart's health check keeps the CephCluster `Progressing` for the whole run (about 25 minutes on this cluster). The `rook-ceph-cluster` HelmRelease needs `spec.timeout: 30m`; with Flux's default 5m the upgrade "fails" and Flux rolls back, which reverts the CephCluster image and any `security.cephx` change mid-upgrade.
+A `cephImage` change rolls every mon, mgr and OSD and the cluster chart's health check keeps the CephCluster `Progressing` for the whole run (about 25 minutes on this cluster). The `rook-ceph-cluster` HelmRelease needs a `spec.timeout` in that range (30m through the 19.2.6 patch bump, raised to 45m in #733 for the Squid -> Tentacle major, which converts on-disk state as it rolls); with Flux's default 5m the upgrade "fails" and Flux rolls back, which reverts the CephCluster image and any `security.cephx` change mid-upgrade.
 
 Once rolled back, Rook sees mixed versions and takes the "more than one ceph version running, triggering upgrade" path, which has **no downgrade guard**: it will move already-upgraded daemons back to the older spec image. The only thing holding it off is the HEALTH_ERR pre-check, and after a Ceph 19.2.6+ bump that HEALTH_ERR is the CVE's own `AUTH_INSECURE_SERVICE_*` errors. So:
 
@@ -35,6 +35,10 @@ Once rolled back, Rook sees mixed versions and takes the "more than one ceph ver
 The v1.19 toolbox does not reload its keyring after the admin key rotates (`RADOS permission denied`). `kubectl -n rook-ceph rollout restart deploy/rook-ceph-tools`. The v1.20 toolbox script watches the keyring.
 
 Verification that this cluster reached: `status.cephx` generation 2 for admin/mon/mgr/osd/crashCollector/cephExporter with mgr and osd `keyType: aes256k`; csi and rbdMirrorPeer stay at generation 1 `aes`. Expect exactly four remaining warnings: `AUTH_INSECURE_CLIENT_KEY_TYPE`, `AUTH_INSECURE_KEYS_ALLOWED`, `AUTH_INSECURE_KEYS_CREATABLE`, `AUTH_INSECURE_ROTATING_SERVICE_KEY_TYPE` (the last clears after 2-3 hours).
+
+## 19.2.6 -> 20.2.4: Squid to Tentacle
+
+Done in #733. The cluster HelmRelease pins `cephImage`, so the major is one tag change; the chart derives `cephVersion.image` and the toolbox image from it. Preconditions worth reading before the merge, because Rook will not stop you: every daemon already on the same Squid build (`ceph versions`), `require_osd_release squid` in `ceph osd dump`, `HEALTH_OK`, all PGs `active+clean`. `security.cephx.daemon.keyGeneration` stays at 2 — bumping it in the same PR would rotate keys mid-major; Rook re-stamps `keyCephVersion` to the new build on its own.
 
 ## Health gate
 
