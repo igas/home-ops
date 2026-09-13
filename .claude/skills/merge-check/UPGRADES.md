@@ -13,3 +13,7 @@ Layer 1 bumps change `talos/talenv.yaml` and a tuppr resource under `kubernetes/
 ## Verdict rule
 
 Best possible verdict is `safe with prep`. The **Prep** line names how to watch: `kubectl get nodes -w` and the tuppr resource status, and which order tuppr will take the nodes in.
+
+## Gotcha: kubelet bumps are gated by the *running* Talos
+
+The support matrix is enforced at runtime. tuppr uses Talos machinery, which rejects a Kubernetes minor the current Talos does not list (`unsupported upgrade path 1.36->1.37`, [home-operations/tuppr#544](https://github.com/home-operations/tuppr/issues/544)). Caught 2026-09-13 on PR #656: Talos 1.13 tops out at Kubernetes 1.36, so the kubelet 1.37 PR needs a Talos 1.14 bump merged and rolled out first. When the kubelet PR exists but the Talos one does not, check the Renovate dashboard for the `installer` entry.
