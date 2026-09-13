@@ -9,6 +9,11 @@ spec:
     kind: OCIRepository
     name: rook-ceph-cluster
   interval: 1h
+  # A Ceph image change rolls mons, mgrs and OSDs one at a time and the chart's
+  # health check on the CephCluster stays InProgress until that finishes. The
+  # default 5m timeout fails the upgrade and Flux rolls the CephCluster spec back
+  # mid-upgrade (seen 2026-09-13 on #720).
+  timeout: 30m
   values:
     monitoring:
       enabled: true
