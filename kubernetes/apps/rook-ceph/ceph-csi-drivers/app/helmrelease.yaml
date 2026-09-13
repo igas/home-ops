@@ -5,16 +5,9 @@ kind: HelmRelease
 metadata:
   name: ceph-csi-drivers
 spec:
-  chart:
-    spec:
-      chart: ceph-csi-drivers
-      # One ahead of the ceph-csi-operator v1.0.4 that rook-ceph v1.20.7 pulls in as
-      # a subchart. The CRs rendered here use no field the v1.0.4 CRDs lack.
-      version: 1.0.5
-      sourceRef:
-        kind: HelmRepository
-        name: ceph-csi-operator
-        namespace: rook-ceph
+  chartRef:
+    kind: OCIRepository
+    name: ceph-csi-drivers
   interval: 1h
   # Rook v1.20 dropped CSI driver management from the rook-ceph chart. This chart
   # takes over the OperatorConfig and the two Driver CRs the v1.19 operator wrote;

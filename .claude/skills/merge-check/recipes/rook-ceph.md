@@ -10,7 +10,7 @@ A chart minor can carry a Ceph **major** (the v1.20 chart defaults to v20.2.4 Te
 
 Done on 2026-09-13 in #732 (v1.19.11 → v1.20.7). Full writeup, including the ServiceAccount rename table and the helm-adoption trap on the CephFS `Driver` CR, in `docs/runbooks/rook-ceph-1.20-csi-split.md`. The short version:
 
-1. The drivers live in the `ceph-csi-drivers` chart (`https://ceph.github.io/ceph-csi-operator`, a GitHub Pages index, so it needs a `HelmRepository` rather than an `OCIRepository`). The ceph-csi-operator controller still ships inside `rook-ceph`.
+1. The drivers live in the `ceph-csi-drivers` chart. Upstream publishes it only to a GitHub Pages index (`https://ceph.github.io/ceph-csi-operator`); pull it from `ghcr.io/home-operations/charts-mirror/ceph-csi-drivers` instead, the mirror this repo already uses for eight other charts, so it keeps the usual `OCIRepository` shape. The ceph-csi-operator controller still ships inside `rook-ceph`.
 2. Kustomization order: `ceph-csi-drivers` depends on `rook-ceph`; `rook-ceph-cluster` depends on both.
 3. `csi.cephFSKernelMountOptions` moves to `cephClusterSpec.csi.cephfs.kernelMountOptions`. The operator chart's old `csi.*` keys are silently ignored (no `values.schema.json`).
 4. Values start from Rook's own recommended file (`deploy/charts/ceph-csi-drivers/values.yaml` at the tag), which the chart is documented as requiring. It is not sufficient on an upgrade: rendered as-is it gives RBD `snapshotPolicy: none`, and the operator only runs a `csi-snapshotter` when the policy is not `none` — that silently kills RBD VolumeSnapshots and VolSync. Snapshot first (`kubectl -n rook-ceph get drivers.csi.ceph.io,operatorconfigs.csi.ceph.io -o yaml`), then diff the rendered `Driver` specs against it.

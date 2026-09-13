@@ -58,9 +58,7 @@ kubernetes/apps/{namespace}/{app-name}/
 ├── ks.yaml              # Flux Kustomization
 └── app/
     ├── helmrelease.yaml   # Flux HelmRelease
-    ├── ocirepository.yaml # OCI chart source (or gitrepository.yaml, or
-    │                      # helmrepository.yaml for charts published only to an
-    │                      # HTTP index, e.g. ceph-csi-drivers)
+    ├── ocirepository.yaml # OCI chart source (or gitrepository.yaml)
     └── kustomization.yaml # Kustomize overlay
 ```
 

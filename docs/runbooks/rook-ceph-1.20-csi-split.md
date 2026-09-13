@@ -144,6 +144,10 @@ accepted and silently ignored.
 - `ceph-csi-drivers` versions independently of the two Rook charts and sits
   outside their Renovate group, so it bumps on its own. Pinned at 1.0.5 against
   the ceph-csi-operator v1.0.4 that `rook-ceph` v1.20.7 vendors as a subchart.
+- Upstream publishes the chart only to a GitHub Pages index, not to OCI. It comes
+  in here through `ghcr.io/home-operations/charts-mirror`, the same mirror this
+  repo already uses for cilium, external-dns, volsync and five others, so the
+  HelmRelease keeps the `chartRef` + `OCIRepository` shape every other app uses.
 - New operator defaults: `ROOK_CEPH_MON_RUN_AS_ROOT: "false"` and
   `ROOK_DELETE_UNUSED_CRUSH_RULES: "true"`.
 - `cephImage` stays pinned at `v19.2.6`. The v1.20 chart defaults to Ceph v20
