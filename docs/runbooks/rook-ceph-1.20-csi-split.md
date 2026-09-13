@@ -150,10 +150,11 @@ accepted and silently ignored.
   HelmRelease keeps the `chartRef` + `OCIRepository` shape every other app uses.
 - New operator defaults: `ROOK_CEPH_MON_RUN_AS_ROOT: "false"` and
   `ROOK_DELETE_UNUSED_CRUSH_RULES: "true"`.
-- `cephImage` stays pinned at `v19.2.6`. The v1.20 chart defaults to Ceph v20
-  (Tentacle); that is a separate upgrade.
+- `cephImage` stayed pinned at `v19.2.6` through this migration. The v1.20 chart
+  defaults to Ceph v20 (Tentacle); that went in separately as #733.
 - The v1.20 toolbox script watches the keyring, so it no longer needs the manual
   `rollout restart` the v1.19 one did after a cephx rotation.
-- `rook-ceph-cluster` keeps `timeout: 30m` for Ceph daemon rollouts. The
-  `rook-ceph` HelmRelease does not need one: its health check is the operator
-  Deployment, and the CSI pods roll asynchronously afterwards.
+- `rook-ceph-cluster` kept `timeout: 30m` for Ceph daemon rollouts; #733 raised
+  it to 45m for the Tentacle major. The `rook-ceph` HelmRelease does not need
+  one: its health check is the operator Deployment, and the CSI pods roll
+  asynchronously afterwards.
