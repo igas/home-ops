@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Talos Linux + Kubernetes + Flux GitOps cluster for home operations. It uses MakeJinja templating to generate cluster configurations, SOPS/AGE for secret encryption, and Flux CD for GitOps-driven deployments.
 
-**Cluster**: 3 control plane nodes (k8s-master-01/02/03) + 2 worker nodes (k8s-worker-01/02) running Talos Linux with Kubernetes.
+**Cluster**: 3 control plane nodes (k8s-master-01/02/03) + 1 worker node (k8s-worker-02) running Talos Linux with Kubernetes. k8s-worker-01 (192.168.6.11) is soft-deleted: its hardware was repurposed and its entry in `talos/talconfig.yaml` is commented out pending re-add with no ETA.
 
 **Domain**: Use `igas.dev` for all hostnames and configurations. Do not use `turbo.ac`.
 

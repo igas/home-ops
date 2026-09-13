@@ -57,19 +57,19 @@ nodes:
       - "@./patches/network/vlan.yaml"
       - "@./patches/network/ntp.yaml"
       - "@./patches/network/dns.yaml"
-  - hostname: "k8s-worker-01"
-    ipAddress: "192.168.6.11"
-    installDiskSelector:
-      serial: "202982290001285522FF"
-    machineSpec:
-      secureboot: true
-    talosImageURL: factory.talos.dev/installer-secureboot/9c1d1b442d73f96dcd04e81463eb20000ab014062d22e1b083e1773336bc1dd5
-    controlPlane: false
-    patches:
-      - "@./patches/nodes/worker-01.yaml"
-      - "@./patches/network/vlan.yaml"
-      - "@./patches/network/ntp.yaml"
-      - "@./patches/network/dns.yaml"
+  # - hostname: "k8s-worker-01"
+  #   ipAddress: "192.168.6.11"
+  #   installDiskSelector:
+  #     serial: "202982290001285522FF"
+  #   machineSpec:
+  #     secureboot: true
+  #   talosImageURL: factory.talos.dev/installer-secureboot/9c1d1b442d73f96dcd04e81463eb20000ab014062d22e1b083e1773336bc1dd5
+  #   controlPlane: false
+  #   patches:
+  #     - "@./patches/nodes/worker-01.yaml"
+  #     - "@./patches/network/vlan.yaml"
+  #     - "@./patches/network/ntp.yaml"
+  #     - "@./patches/network/dns.yaml"
   - hostname: "k8s-worker-02"
     ipAddress: "192.168.6.12"
     installDiskSelector:
