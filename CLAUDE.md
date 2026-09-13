@@ -102,3 +102,17 @@ MakeJinja processes `.j2` files from `templates/` directory:
 - Internal Gateway (Envoy): `192.168.6.7`
 - Cluster DNS Gateway: `192.168.6.8`
 - Kube API: `192.168.6.9`
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `igas/home-ops`, driven via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
