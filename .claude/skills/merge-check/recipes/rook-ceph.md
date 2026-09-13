@@ -38,7 +38,11 @@ Verification that this cluster reached: `status.cephx` generation 2 for admin/mo
 
 ## 19.2.6 -> 20.2.4: Squid to Tentacle
 
-Done in #733. The cluster HelmRelease pins `cephImage`, so the major is one tag change; the chart derives `cephVersion.image` and the toolbox image from it. Preconditions worth reading before the merge, because Rook will not stop you: every daemon already on the same Squid build (`ceph versions`), `require_osd_release squid` in `ceph osd dump`, `HEALTH_OK`, all PGs `active+clean`. `security.cephx.daemon.keyGeneration` stays at 2 — bumping it in the same PR would rotate keys mid-major; Rook re-stamps `keyCephVersion` to the new build on its own.
+Done in #733. The cluster HelmRelease pins `cephImage`, so the major is one tag change; the chart derives `cephVersion.image` and the toolbox image from it. Preconditions worth reading before the merge, because Rook will not stop you: every daemon already on the same Squid build (`ceph versions`), `require_osd_release squid` in `ceph osd dump`, `HEALTH_OK`, all PGs `active+clean`. `security.cephx.daemon.keyGeneration` stays at 2 — bumping it in the same PR would rotate keys mid-major.
+
+The rollout itself is quick: about 6 minutes for all 8 daemons (mons, then mgrs, then OSDs), against the ~25 minutes the 19.2.6 bump took. That 25 minutes was the cephx rotation, not the image. Rook bumps `require_osd_release` to `tentacle` by itself once the last OSD is up.
+
+`status.cephx` keeps `keyCephVersion: 19.2.6-0` at generation 2 after the major, and that is correct, not a stalled upgrade: Rook only re-stamps `keyCephVersion` when it actually mints a new key, and generation 2 is already the desired generation, so nothing rotates. Expecting the field to follow the Ceph version is the trap (#733's acceptance criteria assumed it would). Read `keyGeneration` and `keyType` for the CVE posture; `keyCephVersion` records which build minted the key that is still in use.
 
 ## Health gate
 
