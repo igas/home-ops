@@ -19,9 +19,13 @@ spec:
   # Rook v1.20 dropped CSI driver management from the rook-ceph chart. This chart
   # takes over the OperatorConfig and the two Driver CRs the v1.19 operator wrote;
   # the ceph-csi-operator controller itself still ships with the rook-ceph chart.
-  # Values that differ from the chart defaults reproduce what is running today, so
-  # helm adoption does not rewrite the live Driver specs. Chart reference:
-  # https://github.com/ceph/ceph-csi-operator/blob/v1.0.5/charts/ceph-csi-drivers/values.yaml
+  #
+  # The baseline here is Rook's own recommended values file, which the drivers are
+  # documented as requiring (the chart's bare defaults do not work with Rook):
+  # https://github.com/rook/rook/blob/v1.20.7/deploy/charts/ceph-csi-drivers/values.yaml
+  # That file covers the namespace, the imageSet, the priority classes and the four
+  # prefixed driver names. Everything beyond it is here to reproduce what is running
+  # today, so helm adoption does not rewrite the live Driver specs.
   values:
     # cephConnections and clientProfiles stay unset: Rook owns the CephConnection
     # and ClientProfile CRs (that is where cephClusterSpec.csi settings land).
@@ -105,10 +109,13 @@ spec:
         # Chart defaults are grpcTimeout 30, replicas 1 and log rotation on; the live
         # drivers run Rook's 150s timeout and two controller replicas.
         grpcTimeout: 150
-        # The live RBD snapshotter has no CSIVolumeGroupSnapshot feature gate, so
-        # volumeSnapshot, not volumeGroupSnapshot, is what backs the
-        # csi-ceph-blockpool VolumeSnapshotClass today. The chart would default this
-        # to none and drop the snapshotter entirely.
+        # Must be set. Rook's recommended values leave this at the chart default of
+        # none for RBD, and the operator only runs a csi-snapshotter when the policy
+        # is not none (driver_controller.go, v1.0.5) - that would take out the
+        # csi-ceph-blockpool VolumeSnapshotClass and every VolSync RBD snapshot.
+        # volumeSnapshot, not volumeGroupSnapshot: an unset policy resolves to
+        # volumeSnapshot, which is what the live RBD driver runs (its csi-snapshotter
+        # carries no CSIVolumeGroupSnapshot feature gate).
         snapshotPolicy: volumeSnapshot
         log:
           rotation:

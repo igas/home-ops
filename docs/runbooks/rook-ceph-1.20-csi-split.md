@@ -79,8 +79,24 @@ RBD and the `OperatorConfig` already carried it.
 
 ## Values that have to be carried over by hand
 
-The `ceph-csi-drivers` chart defaults do not match what Rook wrote into the live
-CRs. Snapshot them first and diff the render against the snapshot:
+Start from Rook's own recommended values file, which the drivers chart is
+documented as requiring because its bare defaults do not work with Rook at all:
+[`deploy/charts/ceph-csi-drivers/values.yaml`](https://github.com/rook/rook/blob/v1.20.7/deploy/charts/ceph-csi-drivers/values.yaml).
+It sets the namespace, the `imageSet`, the two priority class names and the four
+prefixed driver names, and nothing else.
+
+That baseline is not enough on an upgrade, because it leaves everything else at
+chart defaults that do not match what Rook wrote into the live CRs. Rendered
+against this cluster it would give RBD `snapshotPolicy: none`, `grpcTimeout: 30`,
+one controller replica and log rotation on.
+
+**The `snapshotPolicy` one is the dangerous default.** The operator only runs a
+`csi-snapshotter` when the policy is not `none`
+([`driver_controller.go` v1.0.5](https://github.com/ceph/ceph-csi-operator/blob/v1.0.5/internal/controller/driver_controller.go), the `snPolicy != csiv1.NoneSnapshotPolicy` guard), so
+taking the recommended file as-is would drop the sidecar behind the
+`csi-ceph-blockpool` VolumeSnapshotClass and every VolSync RBD snapshot with it.
+
+Snapshot the live CRs first and diff the render against the snapshot:
 
 ```sh
 kubectl -n rook-ceph get drivers.csi.ceph.io,operatorconfigs.csi.ceph.io -o yaml
@@ -90,10 +106,10 @@ The gaps worth knowing about:
 
 - `grpcTimeout` defaults to 30; Rook ran 150.
 - `controllerPlugin.replicas` defaults to 1; Rook ran 2.
-- `snapshotPolicy` defaults to `none` for RBD, which would drop the snapshotter
-  sidecar that backs the `csi-ceph-blockpool` VolumeSnapshotClass. The live CRs
-  set no policy at all, so read it off the running sidecar instead: RBD's
-  `csi-snapshotter` has no `--feature-gates=CSIVolumeGroupSnapshot=true`
+- `snapshotPolicy`: see above. The live CRs set no policy at all, and an unset
+  policy resolves to `volumeSnapshot` (`cmp.Or(spec.SnapshotPolicy,
+  VolumeSnapshotSnapshotPolicy)`), so read the real value off the running sidecar:
+  RBD's `csi-snapshotter` has no `--feature-gates=CSIVolumeGroupSnapshot=true`
   (so: `volumeSnapshot`), CephFS's does (so: `volumeGroupSnapshot`).
 - `log.rotation.enabled` defaults to true, which adds a log-rotator sidecar and a
   hostPath the live drivers do not have. Setting it false is what suppresses the
