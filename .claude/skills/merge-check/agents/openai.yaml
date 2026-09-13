@@ -1,0 +1,5 @@
+interface:
+  display_name: "Merge check"
+  short_description: "Verdict on whether a Renovate PR is safe to merge"
+policy:
+  allow_implicit_invocation: false
