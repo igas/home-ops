@@ -28,8 +28,8 @@ task reconcile               # Force Flux to reconcile all resources
 task bootstrap:talos         # Bootstrap new Talos cluster
 task bootstrap:apps          # Bootstrap Flux and initial applications
 task talos:generate-config   # Regenerate Talos node configs from talconfig.yaml
-task talos:apply-node NODE=k8s-master-01   # Apply config to specific node
-task talos:upgrade-node NODE=k8s-master-01 # Upgrade Talos on specific node
+task talos:apply-node IP=192.168.6.1       # Apply config to specific node
+task talos:upgrade-node IP=192.168.6.1     # Upgrade Talos on specific node
 task talos:upgrade-k8s       # Upgrade Kubernetes version
 task talos:reset             # Reset cluster to maintenance mode
 ```
@@ -103,7 +103,8 @@ MakeJinja processes `.j2` files from `templates/` directory:
 - Service CIDR: `10.43.0.0/16`
 - Internal Gateway (Envoy): `192.168.6.7`
 - Cluster DNS Gateway: `192.168.6.8`
-- Kube API: `192.168.6.9`
+- Kube API LoadBalancer (Cilium): `192.168.6.9`
+- Control-plane endpoint: `https://k8s.igas.dev:6443` (three A records to the masters, not the LoadBalancer; see `docs/runbooks/talos-control-plane-endpoint.md`)
 
 ## Agent skills
 

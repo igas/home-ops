@@ -20,4 +20,6 @@ Each directory is optional and therefore might not created by default.
 - `controller/kube-etcd-encryption.yaml`: re-adds `KubeEtcdEncryptionConfig` in the running cluster's shape; reads `${secretboxEncryptionSecret}` from `../talenv.sops.yaml`.
 - `controller/cluster.yaml`: v1alpha1 fields that have no document kind yet, or whose kind the pinned talhelper cannot decode.
 
+`kubernetes.yaml` also pins kube-apiserver's `--service-account-issuer` and `--api-audiences`, which Talos would otherwise derive from `cluster.controlPlane.endpoint`: see [docs/runbooks/talos-control-plane-endpoint.md](../../docs/runbooks/talos-control-plane-endpoint.md).
+
 Patch files are env-substituted by talhelper, so a literal `$patch` is written `$$patch`.

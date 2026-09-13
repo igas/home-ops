@@ -4,11 +4,13 @@ clusterName: kubernetes
 talosVersion: "${talosVersion}"
 kubernetesVersion: "${kubernetesVersion}"
 
-# Kept at the live value. kube-apiserver derives --service-account-issuer and
-# --api-audiences from this endpoint, so moving it to https://k8s.igas.dev:6443
-# invalidates every in-cluster service account token until rotation. Tracked as
-# a separate change.
-endpoint: https://192.168.6.1:6443
+# kube-apiserver would derive --service-account-issuer and --api-audiences from
+# this endpoint, so a change here invalidates every in-cluster service account
+# token until rotation. patches/controller/kubernetes.yaml pins both flags to
+# the pre-move endpoint (https://192.168.6.1:6443) for that reason, which is
+# what makes this value safe to move. Unpin it only by the phases in
+# docs/runbooks/talos-control-plane-endpoint.md.
+endpoint: https://k8s.igas.dev:6443
 additionalApiServerCertSans: &sans
   - "127.0.0.1"
   - "k8s.igas.dev"

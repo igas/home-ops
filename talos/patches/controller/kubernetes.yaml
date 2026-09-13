@@ -14,6 +14,20 @@ certExtraSANs:
 extraArgs:
   # https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/
   enable-aggregator-routing: "true"
+  # Pinned so the service account issuer stops tracking
+  # cluster.controlPlane.endpoint. Talos derives --service-account-issuer and
+  # --api-audiences from the endpoint, and neither flag is on kube-apiserver's
+  # merge denylist, so extraArgs overwrite the derived value (the default merge
+  # policy is overwrite, and a value list renders one --flag=value per entry).
+  # The first entry is the issuer new tokens are signed with and stays at the
+  # pre-move endpoint; the rest are only accepted for verification. That is what
+  # left the endpoint free to move to k8s.igas.dev with every in-cluster token
+  # still valid. docs/runbooks/talos-control-plane-endpoint.md has the phased
+  # issuer move and what has to change with these two lists.
+  service-account-issuer: &issuers
+    - https://192.168.6.1:6443
+    - https://k8s.igas.dev:6443
+  api-audiences: *issuers
 ---
 # Drop the default PodSecurity admission configuration
 # (was cluster.apiServer.admissionControl: $patch: delete).
