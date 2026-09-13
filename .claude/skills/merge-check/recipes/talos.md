@@ -2,17 +2,18 @@
 
 Layer 1. Extra steps live in [UPGRADES.md](../UPGRADES.md); this file holds what those steps found on real reviews. Caught 2026-09-13 on PR #725 (v1.13.10 → v1.14.0).
 
-## Preflight: render the config locally before the verdict
+## Preflight: the render check, with a local fallback
 
-CI does not render Talos config on Renovate PRs (only flux-local runs; the e2e workflow did not). Render in the scratchpad with the new version so `task talos:generate-config` is known to work after merge:
+The `Talos Config` workflow (`.github/workflows/talos.yaml`) runs on every PR that touches `talos/`. It installs the talhelper pinned in `.mise.toml`, generates a throwaway secret bundle, and runs `scripts/talos-render-check.sh`, so a Renovate bump whose contract rejects the patches goes red with talhelper's message in the `Talos Config Render` log and step summary. Read that log before the verdict. Until #731 migrates the controller patches, the check is red on 1.14 for every `talos/` PR; a red check is only a finding when its message differs from the one below.
+
+Local fallback, when the check did not run or the rendered files are needed (no AGE key, no cluster access):
 
 ```sh
-cp -R talos "$S/talos" && rm -rf "$S/talos/clusterconfig"
-sed -i '' 's/^talosVersion: .*/talosVersion: vX.Y.Z/' "$S/talos/talenv.yaml"
-(cd "$S/talos" && talhelper genconfig -c talconfig.yaml -o ./clusterconfig -s talsecret.sops.yaml)
+task talos:render-check TALOS_VERSION=vX.Y.Z                     # bump under review
+scripts/talos-render-check.sh --talos-version vX.Y.Z --out-dir "$S/rendered"   # same, keeping the output
 ```
 
-Needs the AGE key for `talsecret.sops.yaml`; no cluster access. Render the old version too so a failure is attributable to the bump.
+Render the old version too so a failure is attributable to the bump. The script copies `talos/` to a temp dir, strips `clusterconfig/` and `talsecret.sops.yaml`, overrides `talenv.yaml`, and runs `talhelper genconfig --offline-mode`.
 
 ## 1.14: v1alpha1 `cluster.*` patches stop merging
 

@@ -92,7 +92,8 @@ MakeJinja processes `.j2` files from `templates/` directory:
 
 ## CI/CD
 - **flux-local.yaml** - Validates Flux manifests on PRs, generates diffs
-- **e2e.yaml** - End-to-end validation (template rendering, CUE validation, Talos config)
+- **talos.yaml** - Renders Talos machine config with throwaway secrets on PRs touching `talos/` (`scripts/talos-render-check.sh`, also `task talos:render-check`)
+- **e2e.yaml** - End-to-end validation (template rendering, CUE validation, Talos config); gated to `onedr0p/cluster-template`, never runs here
 - **Renovate** - Automated dependency updates (auto-merges patches/minor versions)
 
 ## Network Configuration

@@ -13,6 +13,16 @@ tasks:
       - test -f {{.SOPS_AGE_KEY_FILE}}
       - which talhelper
 
+  render-check:
+    desc: Render Talos config with throwaway secrets, no AGE key needed [TALOS_VERSION=optional KUBERNETES_VERSION=optional]
+    cmd: >-
+      {{.SCRIPTS_DIR}}/talos-render-check.sh
+      {{- if .TALOS_VERSION }} --talos-version {{.TALOS_VERSION}}{{ end }}
+      {{- if .KUBERNETES_VERSION }} --kubernetes-version {{.KUBERNETES_VERSION}}{{ end }}
+    preconditions:
+      - test -f {{.TALOS_DIR}}/talconfig.yaml
+      - which talhelper
+
   apply-node:
     desc: Apply Talos config to a node [IP=required]
     dir: '{{.TALOS_DIR}}'
