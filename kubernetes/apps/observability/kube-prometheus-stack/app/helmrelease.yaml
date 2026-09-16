@@ -79,6 +79,16 @@ spec:
                   storage: 50Gi
     prometheus-node-exporter:
       fullnameOverride: node-exporter
+      prometheus:
+        monitor:
+          # The pod name is part of the series identity, so every DaemonSet
+          # rollout starts a fresh series. predict_linear() in the Ceph
+          # disk-space rules then fits the dying series' thinning tail and the
+          # new series' cold start, and CephNodeDiskspaceWarning flaps for two
+          # days afterwards. Node identity is already carried by `instance`.
+          metricRelabelings:
+            - action: labeldrop
+              regex: pod
     kube-state-metrics:
       fullnameOverride: kube-state-metrics
       metricLabelsAllowlist:
