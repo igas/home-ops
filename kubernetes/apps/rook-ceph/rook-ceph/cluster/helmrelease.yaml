@@ -36,7 +36,7 @@ spec:
     # v1.20 chart defaulted to v20 while this cluster still ran v19).
     cephImage:
       repository: quay.io/ceph/ceph
-      tag: v20.2.4
+      tag: v21.1.0
     cephClusterSpec:
       cephConfig:
         global:
