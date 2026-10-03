@@ -6,7 +6,7 @@ TALOSCONFIG = "{{config_root}}/talos/clusterconfig/talosconfig"
 LG_CONFIG_FILE = "{{env.HOME}}/Library/Application Support/lazygit/config.yml,{{config_root}}/.lazygit.yml"
 
 [tools]
-"python" = "3.14.7"
+"python" = "3.14.8"
 "uv" = "0.12.19"
 "pipx:makejinja" = "2.9.1"
 "aqua:budimanjojo/talhelper" = "3.1.17"
