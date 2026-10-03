@@ -32,3 +32,11 @@ tasks:
     preconditions:
       - test -f {{.KUBECONFIG}}
       - which flux
+
+  github-status-token:
+    desc: Check and rotate the GitHub token Flux uses for commit statuses
+    interactive: true
+    cmd: '{{.SCRIPTS_DIR}}/github-status-token.sh'
+    preconditions:
+      - test -f {{.KUBECONFIG}}
+      - which flux op
