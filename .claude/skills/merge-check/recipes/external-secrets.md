@@ -13,6 +13,6 @@ helm template es <chart> --version <new> --include-crds > new.yaml
 
 Then extract `provider.properties.onepassword` from the `ClusterSecretStore` and `SecretStore` CRDs in each and diff those.
 
-## Known noise
+## Pushing several keys to one item
 
-PushSecret `network/igas-dev-tls` logs a 1Password 400 on every reconcile while still reporting `Synced`. Not a regression from a bump.
+PushSecret `network/igas-dev-tls` pushes `tls.crt` and `tls.key` to separate 1Password items, because two back-to-back updates to one item get a Connect 400 (#707). A 400 from it now is a real failure, not background noise. If a release note says the Connect provider waits for the item version after an update, merging back to one item becomes an option.
