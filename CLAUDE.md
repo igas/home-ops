@@ -31,6 +31,7 @@ task bootstrap:apps          # Bootstrap Flux and initial applications
 task talos:generate-config   # Regenerate Talos node configs from talconfig.yaml
 task talos:apply-node IP=192.168.6.1       # Apply config to specific node
 task talos:upgrade-node IP=192.168.6.1     # Upgrade Talos on specific node
+task talos:reboot-node IP=192.168.6.1      # Reboot a node with Ceph noout + Alertmanager silences
 task talos:upgrade-k8s       # Upgrade Kubernetes version
 task talos:reset             # Reset cluster to maintenance mode
 ```

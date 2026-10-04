@@ -54,6 +54,21 @@ tasks:
       - test -f {{.TALOSCONFIG}}
       - which kubectl talhelper talosctl yq
 
+  reboot-node:
+    desc: Reboot a node with Ceph noout set and its alerts silenced [IP=required DURATION=30m FORCE=false]
+    cmd: >-
+      {{.SCRIPTS_DIR}}/talos-reboot-node.sh --ip {{.IP}} --duration {{.DURATION}}
+      {{- if eq .FORCE "true" }} --force{{ end }}
+    vars:
+      DURATION: '{{.DURATION | default "30m"}}'
+      FORCE: '{{.FORCE | default "false"}}'
+    requires:
+      vars: [IP]
+    preconditions:
+      - talosctl --nodes {{.IP}} get machineconfig
+      - test -f {{.TALOSCONFIG}}
+      - which kubectl talosctl jq
+
   upgrade-k8s:
     desc: Upgrade Kubernetes
     dir: '{{.TALOS_DIR}}'
