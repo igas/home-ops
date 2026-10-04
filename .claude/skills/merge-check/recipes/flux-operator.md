@@ -20,8 +20,6 @@ On every bump:
 
 ## Checking it after merge
 
-```sh
-kubectl -n flux-system port-forward svc/flux-operator-mcp 9090:9090
-```
+`task flux-mcp` opens the port-forward (see `docs/runbooks/flux-mcp.md`).
 
 The repo's `.mcp.json` points Claude Code at `http://localhost:9090/mcp`. List the tools and check that none of the mutating ones appear. The chart's NetworkPolicy only admits traffic from `flux-system`. Port-forward enters the pod's network namespace directly, so it is not blocked.
