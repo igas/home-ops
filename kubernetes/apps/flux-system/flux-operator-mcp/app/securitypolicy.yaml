@@ -1,0 +1,19 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: flux-operator-mcp
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: flux-operator-mcp
+  apiKeyAuth:
+    credentialRefs:
+      - name: flux-operator-mcp-secret
+    extractFrom:
+      - headers:
+          - x-api-key
+    # Strip the key before the request reaches the MCP server.
+    sanitize: true

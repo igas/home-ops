@@ -42,7 +42,7 @@ tasks:
       - which flux op
 
   flux-mcp:
-    desc: Port-forward the read-only Flux MCP server to localhost:9090 for Claude Code
+    desc: Port-forward the read-only Flux MCP server to localhost:9090, bypassing the gateway
     cmd: kubectl --namespace flux-system port-forward service/flux-operator-mcp 9090:9090
     preconditions:
       - test -f {{.KUBECONFIG}}

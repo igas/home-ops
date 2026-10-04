@@ -21,7 +21,7 @@ All commands use the Task runner (`task`). Run `task --list` to see all availabl
 task init                    # Initialize config files from templates
 task configure               # Render templates and validate configs
 task reconcile               # Force Flux to reconcile all resources
-task flux-mcp                # Port-forward the read-only Flux MCP server for Claude Code (docs/runbooks/flux-mcp.md)
+task flux-mcp                # Port-forward the Flux MCP server, bypassing the gateway (docs/runbooks/flux-mcp.md)
 ```
 
 ### Talos Management
