@@ -6,7 +6,7 @@ metadata:
   name: gitea
   annotations:
     gatus.home-operations.com/endpoint: |-
-      conditions: ["[STATUS] == 404"]
+      conditions: ["[STATUS] == 200"]
 spec:
   hostnames:
     - gitea.igas.dev
