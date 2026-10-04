@@ -18,6 +18,12 @@ Done on 2026-09-13 in #732 (v1.19.11 → v1.20.7). Full writeup, including the S
 
 Check what actually runs before trusting the values. Under v1.19 this cluster set `enableCephfsDriver: false` and ran the CephFS driver pods anyway; the live `Driver` CRs then set neither `grpcTimeout` nor `snapshotPolicy`, so the effective values had to be read off the running sidecar args.
 
+## ceph-csi-drivers bumps alone
+
+The chart only renders CRs (`OperatorConfig`, `Driver`) and RBAC. The operator that reconciles them ships inside `rook-ceph`; check its vendored version under `dependencies:` in `deploy/charts/rook-ceph/Chart.yaml` at the rook tag. Rook v1.20.7 and v1.20.8 both vendor 1.0.4. Most of a drivers release's notes are about that controller (NetworkPolicy, PodMonitor, default image bumps) and do not apply. The plugin images also do not move: Rook writes the imageSet ConfigMap from the `csi.*` tags in the `rook-ceph` chart.
+
+The check that matters: `yq '.spec.values' helmrelease.yaml > v.yaml`, run `helm template` on both chart versions with it, and diff. If the `Driver` and `OperatorConfig` specs are identical, the chart can run ahead of the vendored operator, because the CRDs only ever see what was rendered. New templates for kinds whose CRD is missing (`ClientProfileReplication` in 1.1.0) must render nothing. Third-party review bots have claimed `fsGroupPolicy` changes that the render does not show (onedr0p#11785 on 1.1.0). Check the render and the live `CSIDriver` objects before believing them. Done for 1.0.5 → 1.1.0 in #787: RBAC-only diff.
+
 ## CVE-2025-30156 (CephX)
 
 Ceph ≥ v19.2.6 / v20.2.4 plus `spec.security.cephx.daemon.keyRotationPolicy: KeyGeneration`, `keyGeneration: 2`. Verify with `kubectl -n rook-ceph get cephcluster rook-ceph -o jsonpath='{.status.cephx}'`. CSI keys must stay `security.cephx.csi.keyType: aes` because aes256k kernel mounts need Linux 7.0+ and Talos ships 6.18; mute the four `AUTH_INSECURE_*` warnings via `healthCheck.muteHealthWarning` as onedr0p does in [#11552](https://github.com/onedr0p/home-ops/pull/11552).
