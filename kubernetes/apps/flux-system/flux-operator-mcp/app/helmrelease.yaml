@@ -23,6 +23,13 @@ spec:
     # API-key auth on this route comes from the SecurityPolicy alongside.
     httpRoute:
       enabled: true
+      annotations:
+        # Probe without a key: 401 proves route, TLS, DNS and the API-key
+        # policy; a 200 means the policy fell off. The services group routes
+        # failures through GatusEndpointDown.
+        gatus.home-operations.com/endpoint: |-
+          group: services
+          conditions: ["[STATUS] == 401"]
       hostnames:
         - flux-mcp.igas.dev
       parentRefs:
