@@ -47,6 +47,11 @@ metadata:
   name: envoy-external
   annotations:
     external-dns.kubernetes.io/target: external.igas.dev
+    # gatus-sidecar merges this into the endpoint template of every route on
+    # this Gateway (the route's own annotation wins per key). The external
+    # group alerts via GatusEndpointDown.
+    gatus.home-operations.com/endpoint: |-
+      group: external
 spec:
   gatewayClassName: envoy
   infrastructure:
@@ -77,6 +82,11 @@ metadata:
   name: envoy-internal
   annotations:
     external-dns.kubernetes.io/target: internal.igas.dev
+    # Reachability checks alert via GatusEndpointDown under services. Not
+    # internal: that group means "has a public DNS record"
+    # (GatusEndpointExposed).
+    gatus.home-operations.com/endpoint: |-
+      group: services
 spec:
   gatewayClassName: envoy
   infrastructure:

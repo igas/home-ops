@@ -25,10 +25,9 @@ spec:
       enabled: true
       annotations:
         # Probe without a key: 401 proves route, TLS, DNS and the API-key
-        # policy; a 200 means the policy fell off. The services group routes
-        # failures through GatusEndpointDown.
+        # policy; a 200 means the policy fell off. The group comes from the
+        # envoy-internal Gateway.
         gatus.home-operations.com/endpoint: |-
-          group: services
           conditions: ["[STATUS] == 401"]
       hostnames:
         - flux-mcp.igas.dev
