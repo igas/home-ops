@@ -11,11 +11,7 @@ The cluster runs the Flux MCP server (`flux-operator-mcp` in `flux-system`, adde
 
 ## Connect
 
-1. Export the key in the shell that starts Claude Code:
-
-   ```sh
-   export FLUX_MCP_API_KEY="$(op read 'op://Kubernetes/flux-operator-mcp/FLUX_MCP_API_KEY')"
-   ```
+1. Open a shell in the repo. mise sets `FLUX_MCP_API_KEY` from `.mise.toml` by running `op read 'op://Kubernetes/flux-operator-mcp/FLUX_MCP_API_KEY'`. It caches the result for a day, so 1Password asks once a day, not for every new tab. If `op` fails (locked, approval dismissed), the variable is empty and that empty value is also cached for the day. Clear it with `rm -rf ~/Library/Caches/mise/exec`, then `cd .` to reload. The cache is plaintext under `~/Library/Caches/mise/exec`.
 
 2. Start Claude Code in the repo (or run `/mcp` in a running session to reconnect). `.mcp.json` points the `flux-operator-mcp` entry at the gateway URL and sends `x-api-key: ${FLUX_MCP_API_KEY}`. Approve the server the first time Claude Code asks.
 
@@ -31,7 +27,7 @@ Secret values come back masked (`--mask-secrets=true`).
 
 ## Rotate the key
 
-Generate a new value in the 1Password item, force the sync, then re-run the `export` from Connect step 1 and reconnect with `/mcp`:
+Generate a new value in the 1Password item, force the sync, clear the cached key with `rm -rf ~/Library/Caches/mise/exec`, then open a new shell in the repo and reconnect with `/mcp`:
 
 ```sh
 kubectl -n flux-system annotate externalsecret flux-operator-mcp force-sync="$(date +%s)" --overwrite

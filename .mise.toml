@@ -4,6 +4,9 @@ KUBECONFIG = "{{config_root}}/kubeconfig"
 SOPS_AGE_KEY_FILE = "{{config_root}}/age.key"
 TALOSCONFIG = "{{config_root}}/talos/clusterconfig/talosconfig"
 LG_CONFIG_FILE = "{{env.HOME}}/Library/Application Support/lazygit/config.yml,{{config_root}}/.lazygit.yml"
+# Flux MCP API key (docs/runbooks/flux-mcp.md). Cached for a day so 1Password
+# prompts once, not per shell; `|| true` keeps the rest of the env working when op fails.
+FLUX_MCP_API_KEY = { value = "{{ exec(command='op read op://Kubernetes/flux-operator-mcp/FLUX_MCP_API_KEY 2>/dev/null || true', cache_key='home-ops-flux-mcp-api-key', cache_duration='1d') }}", redact = true }
 
 [tools]
 "python" = "3.14.8"
