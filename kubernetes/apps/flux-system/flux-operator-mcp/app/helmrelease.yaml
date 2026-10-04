@@ -1,0 +1,19 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: flux-operator-mcp
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: flux-operator-mcp
+  interval: 1h
+  values:
+    transport: http
+    # The chart binds its ServiceAccount to cluster-admin; read-only mode
+    # strips the mutating tools and is the only thing making that acceptable.
+    readonly: true
+    networkPolicy:
+      create: true
+    extraArgs:
+      - --mask-secrets=true
