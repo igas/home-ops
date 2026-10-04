@@ -20,6 +20,4 @@ On every bump:
 
 ## Checking it after merge
 
-`task flux-mcp` opens the port-forward (see `docs/runbooks/flux-mcp.md`).
-
-The repo's `.mcp.json` points Claude Code at `http://localhost:9090/mcp`. List the tools and check that none of the mutating ones appear. The chart's NetworkPolicy only admits traffic from `flux-system`. Port-forward enters the pod's network namespace directly, so it is not blocked.
+Connect through the gateway as in `docs/runbooks/flux-mcp.md` (export `FLUX_MCP_API_KEY`, then `/mcp`). List the tools and check that none of the mutating ones appear. Also check that the chart's NetworkPolicy still admits port 9090 only from `flux-system` and `network`.

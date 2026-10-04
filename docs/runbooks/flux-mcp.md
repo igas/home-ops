@@ -55,4 +55,3 @@ Envoy Gateway picks up the changed Secret on its own.
 - 401 with the header set: the key in your shell does not match the Secret. Check `kubectl -n flux-system get externalsecret flux-operator-mcp` is `SecretSynced`.
 - 404 or 500: check `kubectl -n flux-system get httproute,securitypolicy flux-operator-mcp -o yaml` for `Accepted` conditions. A SecurityPolicy whose Secret is missing fails closed.
 - 503 or timeouts: check the pod with `kubectl -n flux-system logs deploy/flux-operator-mcp`. If every route on the internal gateway fails, look at the Envoy Gateway controller logs.
-- To bypass the gateway entirely, run `task flux-mcp` and send the curl above to `http://localhost:9090/mcp`.
