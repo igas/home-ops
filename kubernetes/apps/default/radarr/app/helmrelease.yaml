@@ -38,7 +38,23 @@ spec:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
             probes:
-              liveness: &probes
+              # Liveness restarts the container, so it only fires on a hung
+              # process (period x threshold = 150s unresponsive), not a slow
+              # cold start. Readiness fails fast to pull the Pod from the
+              # Service. Startup gates both on the same endpoint with a 600s
+              # allowance. See docs/runbooks/probe-tuning.md.
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 5
+              readiness:
                 enabled: true
                 custom: true
                 spec:
@@ -49,7 +65,17 @@ spec:
                   periodSeconds: 10
                   timeoutSeconds: 1
                   failureThreshold: 3
-              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 10
+                  failureThreshold: 60
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true

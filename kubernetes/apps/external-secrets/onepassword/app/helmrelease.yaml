@@ -31,6 +31,13 @@ spec:
                     name: "{{ .Release.Name }}-secret"
                     key: 1password-credentials.json
             probes:
+              # Tighter than the docs/runbooks/probe-tuning.md defaults on
+              # purpose. Every ExternalSecret refresh goes through this single
+              # replica, so a hung Connect stalls secret delivery cluster-wide
+              # until it restarts. Both containers are Go binaries with no
+              # warmup, so 5s still separates slow from hung, and a 60s liveness
+              # budget restarts it well before the 150s default. Startup allows
+              # 120s.
               liveness:
                 enabled: true
                 custom: true
@@ -40,8 +47,8 @@ spec:
                     port: *apiPort
                   initialDelaySeconds: 0
                   periodSeconds: 10
-                  timeoutSeconds: 1
-                  failureThreshold: 3
+                  timeoutSeconds: 5
+                  failureThreshold: 6
               readiness:
                 enabled: true
                 custom: true
@@ -53,6 +60,17 @@ spec:
                   periodSeconds: 10
                   timeoutSeconds: 1
                   failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /heartbeat
+                    port: *apiPort
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 12
             resources: &resources
               requests:
                 cpu: 10m
@@ -77,6 +95,7 @@ spec:
                     name: "{{ .Release.Name }}-secret"
                     key: 1password-credentials.json
             probes:
+              # Same reasoning as the api container's probes above.
               liveness:
                 enabled: true
                 custom: true
@@ -86,8 +105,8 @@ spec:
                     port: *syncPort
                   initialDelaySeconds: 0
                   periodSeconds: 10
-                  timeoutSeconds: 1
-                  failureThreshold: 3
+                  timeoutSeconds: 5
+                  failureThreshold: 6
               readiness:
                 enabled: true
                 custom: true
@@ -99,6 +118,17 @@ spec:
                   periodSeconds: 10
                   timeoutSeconds: 1
                   failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /heartbeat
+                    port: *syncPort
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 12
             resources: *resources
             securityContext: *securityContext
     defaultPodOptions:

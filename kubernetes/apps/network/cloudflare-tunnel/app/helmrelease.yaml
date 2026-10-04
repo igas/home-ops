@@ -33,18 +33,50 @@ spec:
               - tunnel
               - run
             probes:
-              liveness: &probes
+              # Liveness and startup use /healthcheck, which answers as long as the
+              # process does. /ready returns 503 whenever the edge is unreachable,
+              # so probing it for liveness would restart-loop both replicas through
+              # a WAN outage that a restart cannot fix. Readiness keeps /ready.
+              #
+              # Faster than the docs/runbooks/probe-tuning.md defaults on purpose:
+              # tunnel traffic arrives over cloudflared's outbound connections, not
+              # the Service, so readiness cannot drain a hung replica and liveness
+              # is the only remedy. It is a Go binary with no warmup, so 5s still
+              # separates slow from hung, and a hung replica is restarted after 60s
+              # rather than 150s.
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthcheck
+                    port: &port 8080
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness:
                 enabled: true
                 custom: true
                 spec:
                   httpGet:
                     path: /ready
-                    port: &port 8080
+                    port: *port
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
                   failureThreshold: 3
-              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthcheck
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 12
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true

@@ -80,18 +80,46 @@ alone.
 
 ## Applying this to other apps
 
-Issue #742 covers the rollout. These apps still share one anchor between
-liveness and readiness, and most also carry the default `tcpSocket` startup
-probe:
+Issue #742 rolled this out to ten more apps. Eight of them shared one anchor
+between liveness and readiness; autobrr and onepassword already split them but
+kept the one-second liveness timeout. Only qbittorrent had a startup probe, and
+it was the `tcpSocket` default. All ten now gate on an `httpGet` startup probe
+against their liveness endpoint.
 
-- `network/cloudflare-tunnel`
-- `default/qbittorrent`, `default/echo`, `default/prowlarr`, `default/radarr`,
-  `default/qui`, `default/sonarr`
+These take the table above unchanged:
+
+- `default/autobrr`, `default/echo`, `default/prowlarr`, `default/qbittorrent`,
+  `default/qui`, `default/radarr`, `default/sonarr`
 - `observability/gatus`
 
-Use the table above as the default. Raise the startup or liveness budget further
-only for an app whose warmup is known to be slower than Plex's, and say why in a
-comment next to the probe.
+Two deviate, both faster than the Plex table rather than slower:
+
+| Probe | period | timeout | failureThreshold | Budget |
+| --- | --- | --- | --- | --- |
+| startup | 10s | 5s | 12 | 120s to answer once |
+| liveness | 10s | 5s | 6 | 60s hung before restart |
+| readiness | 10s | 1s | 3 | unchanged |
+
+- `network/cloudflare-tunnel`: tunnel traffic arrives over cloudflared's own
+  outbound connections, not through the Service, so readiness cannot drain a
+  hung replica. Liveness is the only remedy, and 150s of a black-holed replica
+  is too long for the ingress path. Liveness and startup probe `/healthcheck`
+  rather than `/ready`: `/ready` returns 503 whenever the edge is unreachable,
+  and restarting cannot fix a WAN outage, so a liveness probe there would only
+  restart-loop both replicas. Readiness keeps `/ready`. The 60s budget is still
+  looser than the 30s the old shared probe gave.
+- `external-secrets/onepassword`: every ExternalSecret refresh goes through its
+  single replica, so a hung Connect stalls secret delivery cluster-wide.
+
+Both are Go binaries with no warmup off disk, so the slow-versus-hung line sits
+much lower than it does for Plex, and five seconds is still well clear of a
+healthy response under post-reboot contention.
+
+For a new app, use the Plex table as the default. Raise the startup or liveness
+budget only for an app whose warmup is known to be slower than Plex's. Tighten
+it only for one on a critical path where readiness cannot route traffic around
+a hung replica, because no Service sits in the path or there is only one
+replica. Either way, say why in a comment next to the probe.
 
 ## Verifying
 
