@@ -101,8 +101,11 @@ spec:
     route:
       app:
         annotations:
+          # The sidecar probes the first match (/library/streams, 404);
+          # probe Plex's unauthenticated identity endpoint instead.
           gatus.home-operations.com/endpoint: |-
-            conditions: ["[STATUS] == 401"]
+            path: /identity
+            conditions: ["[STATUS] == 200"]
         hostnames:
           - "{{ .Release.Name }}.igas.dev"
         parentRefs:
