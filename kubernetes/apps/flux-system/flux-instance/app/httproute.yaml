@@ -3,6 +3,13 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: github-webhook
+  annotations:
+    # The receiver answers a tokenless /hook/ request with 404; a broken
+    # backend surfaces as an Envoy 5xx or a timeout instead. Envoy's own
+    # no-route 404 looks the same, so a route detached from the gateway
+    # still passes.
+    gatus.home-operations.com/endpoint: |-
+      conditions: ["[STATUS] == 404"]
 spec:
   hostnames: ["flux-webhook.igas.dev"]
   parentRefs:
