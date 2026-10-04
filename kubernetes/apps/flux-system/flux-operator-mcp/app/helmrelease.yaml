@@ -15,5 +15,19 @@ spec:
     readonly: true
     networkPolicy:
       create: true
+      # The chart always admits flux-system; add network, where the Envoy
+      # proxies run. Every other namespace stays denied.
+      ingress:
+        namespaces:
+          - network
+    # API-key auth on this route comes from the SecurityPolicy alongside.
+    httpRoute:
+      enabled: true
+      hostnames:
+        - flux-mcp.igas.dev
+      parentRefs:
+        - name: envoy-internal
+          namespace: network
+          sectionName: https
     extraArgs:
       - --mask-secrets=true
