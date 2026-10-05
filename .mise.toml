@@ -27,5 +27,5 @@ FLUX_MCP_API_KEY = { value = "{{ exec(command='op read op://Kubernetes/flux-oper
 "aqua:kubernetes-sigs/kustomize" = "5.7.1"
 "aqua:kubernetes/kubernetes/kubectl" = "1.37.1"
 "aqua:mikefarah/yq" = "4.54.1"
-"aqua:siderolabs/talos" = "1.14.0"
+"aqua:siderolabs/talos" = "1.14.2"
 "aqua:yannh/kubeconform" = "0.8.0"
