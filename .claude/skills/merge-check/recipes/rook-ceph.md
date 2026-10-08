@@ -52,4 +52,12 @@ The rollout itself is quick: about 6 minutes for all 8 daemons (mons, then mgrs,
 
 ## Health gate
 
-Before any verdict: `kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status` is `HEALTH_OK`, all OSDs up/in, PGs `active+clean`. Rook v1.20.7 supports Kubernetes v1.31–v1.36 (`Documentation/Getting-Started/Prerequisites/prerequisites.md` at the tag; no chart declares a `kubeVersion`). The cluster sits on v1.36, the top edge: re-read that file before letting a kubelet bump past it.
+Before any verdict: `kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status` is `HEALTH_OK`, all OSDs up/in, PGs `active+clean`. Kubernetes support lives in `Documentation/Getting-Started/Prerequisites/prerequisites.md` at the tag; no chart declares a `kubeVersion`, so CI never catches a mismatch. v1.20.7 covers v1.31–v1.36 and v1.20.8 covers v1.31–v1.37. The kubelet bump to v1.37.0 (#656) went in while Rook was still on v1.20.7, so Rook ran unsupported until #780. Read that file at both tags on every Rook bump, and on every kubelet minor.
+
+## What a Rook-only bump restarts
+
+The operator rewrites the `rook-version` label on every mon, mgr and OSD Deployment. That label sits on the Deployment, not on the pod template, so the label change alone restarts nothing. In #780 (v1.20.7 → v1.20.8), only the two **mgrs** rolled, because the mgr pod carries a sidecar that runs the Rook image. Mon quorum age and OSD uptime stayed the same, and the OSD prepare jobs ran again. The whole rollout took about 2 minutes. A Rook patch is still `safe with prep`: check the health gate right before merging. Do not tell the operator to expect a full daemon roll unless the `cephImage` changes.
+
+## `network.provider: host`
+
+The cluster HelmRelease sets `network.provider: host` with public and cluster ranges on 192.168.6.0/24. Release notes that mention host networking or `provider host` apply here. Example: rook#18454 in v1.20.8 put OSD prepare pods back on the host network after a regression had moved them to the pod network. They worked in the meantime only because the pod network can reach the node IPs.
