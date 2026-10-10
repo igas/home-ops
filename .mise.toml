@@ -9,7 +9,7 @@ LG_CONFIG_FILE = "{{env.HOME}}/Library/Application Support/lazygit/config.yml,{{
 FLUX_MCP_API_KEY = { value = "{{ exec(command='op read op://Kubernetes/flux-operator-mcp/FLUX_MCP_API_KEY 2>/dev/null || true', cache_key='home-ops-flux-mcp-api-key', cache_duration='1d') }}", redact = true }
 
 [tools]
-"python" = "3.14.8"
+"python" = "3.15.0"
 "uv" = "0.12.23"
 "pipx:makejinja" = "2.9.1"
 "aqua:budimanjojo/talhelper" = "3.1.17"
