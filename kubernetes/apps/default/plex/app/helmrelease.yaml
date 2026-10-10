@@ -94,7 +94,9 @@ spec:
         type: LoadBalancer
         annotations:
           lbipam.cilium.io/ips: 192.168.6.210
-        externalTrafficPolicy: Local
+        # Cilium L2 announcements ignore Local and may put the lease on a node
+        # without the pod; back to Local once BGP-only lands (#824).
+        externalTrafficPolicy: Cluster
         ports:
           http:
             port: *port
