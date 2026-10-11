@@ -12,6 +12,8 @@ helm template multus <chart-dir> -n kube-system -f <our values> --include-crds >
 
 If the only diff is `helm.sh/chart`, that label is in DaemonSet object metadata, not `spec.template`, so the merge won't restart pods. A diff inside `spec.template` means a rolling restart on all nodes. Check the pods come back Ready on each node.
 
+flux-local can show `spec.selector.matchLabels` keys changing order (seen with common 5.3.0, multus 1.3.6). Compare the label sets, not the line order: if they are the same, the immutable selector hasn't changed and the upgrade won't fail. Only a label being added or removed there is a finding (the DaemonSet would have to be recreated).
+
 common 5.2.0 (2026-09) added tpl rendering for every string value. Our values contain no `{{`, so this has no effect on us. Re-check if values gain templated strings.
 
 ## Precedent
