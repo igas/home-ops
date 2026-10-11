@@ -4,7 +4,7 @@
 
 ## api and sync move together
 
-Renovate opens one PR per image and has no group rule for them. Review both and merge them back to back. A verdict on one names the other in **Prep**.
+The `1password-connect` group rule in `.renovaterc.json5` opens one PR for both images, titled `update 1password-connect group`. It needs both to have an update (`minimumGroupSize: 2`). If a single-image PR still shows up, review the pair together and name the other image's pending bump in **Prep**. Check image config for **both** images; they're built separately.
 
 ## Release notes
 
