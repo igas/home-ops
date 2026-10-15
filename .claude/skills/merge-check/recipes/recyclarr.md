@@ -13,6 +13,10 @@ kubectl -n default get jobs -l app.kubernetes.io/name=recyclarr
 
 If `lastSuccessfulTime` is earlier than `lastScheduleTime`, the most recent sync failed. Read its pod logs before deciding.
 
+Also check the sync targets. If `sonarr` or `radarr` is not Ready, it drops out of its Service endpoints and the next sync fails no matter which recyclarr version runs. That is a Prep item, not a hold on the bump. Note the Sonarr major version (`kubectl -n default get deploy sonarr -o jsonpath='{..image}'`). Recyclarr 8.8.0+ picks its API client by Sonarr major (`SonarrCapabilities.ApiTarget`: v4 uses the V3 gateways, v5 uses the V5 gateways), so release notes scoped to "Sonarr v5" do not apply while we run v4.
+
+Settings that recyclarr does not manage can still be reset by a version that round-trips resources badly. Up to 8.7.3, fields missing from the vendored OpenAPI spec were dropped on update and silently reset (fixed in 8.8.0, `10cf03c`). When a fix like that lands, tell the operator to recheck the affected Sonarr/Radarr settings page. The fix stops new resets but does not restore old ones.
+
 ## Release notes
 
 `CHANGELOG.md` is the release body. The Renovate PR body quotes it in full. The compare file list is the quickest way to find a change that ships in the image:
