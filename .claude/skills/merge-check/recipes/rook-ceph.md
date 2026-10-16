@@ -20,7 +20,7 @@ Check what actually runs before trusting the values. Under v1.19 this cluster se
 
 ## ceph-csi-drivers bumps alone
 
-The chart only renders CRs (`OperatorConfig`, `Driver`) and RBAC. The operator that reconciles them ships inside `rook-ceph`; check its vendored version under `dependencies:` in `deploy/charts/rook-ceph/Chart.yaml` at the rook tag. Rook v1.20.7 and v1.20.8 both vendor 1.0.4. Most of a drivers release's notes are about that controller (NetworkPolicy, PodMonitor, default image bumps) and do not apply. The plugin images also do not move: Rook writes the imageSet ConfigMap from the `csi.*` tags in the `rook-ceph` chart.
+The chart only renders CRs (`OperatorConfig`, `Driver`) and RBAC. The operator that reconciles them ships inside `rook-ceph`; check its vendored version under `dependencies:` in `deploy/charts/rook-ceph/Chart.yaml` at the rook tag. Rook v1.20.7 and v1.20.8 both vendor 1.0.4; Rook 1.21.0 vendors 1.1.0. Most of a drivers release's notes are about that controller (NetworkPolicy, PodMonitor, default image bumps) and do not apply. The plugin images also do not move with a drivers bump. Up to 1.20.x, Rook writes the imageSet ConfigMap from the `csi.*` tags in the `rook-ceph` chart. From 1.21, that ConfigMap is empty and the vendored operator's defaults apply (see "1.20 → 1.21").
 
 The check that matters: `yq '.spec.values' helmrelease.yaml > v.yaml`, run `helm template` on both chart versions with it, and diff. If the `Driver` and `OperatorConfig` specs are identical, the chart can run ahead of the vendored operator, because the CRDs only ever see what was rendered. New templates for kinds whose CRD is missing (`ClientProfileReplication` in 1.1.0) must render nothing. Third-party review bots have claimed `fsGroupPolicy` changes that the render does not show (onedr0p#11785 on 1.1.0). Check the render and the live `CSIDriver` objects before believing them. Done for 1.0.5 → 1.1.0 in #787: RBAC-only diff.
 
@@ -57,6 +57,20 @@ Before any verdict: `kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph st
 ## What a Rook-only bump restarts
 
 The operator rewrites the `rook-version` label on every mon, mgr and OSD Deployment. That label sits on the Deployment, not on the pod template, so the label change alone restarts nothing. In #780 (v1.20.7 → v1.20.8), only the two **mgrs** rolled, because the mgr pod carries a sidecar that runs the Rook image. Mon quorum age and OSD uptime stayed the same, and the OSD prepare jobs ran again. The whole rollout took about 2 minutes. A Rook patch is still `safe with prep`: check the health gate right before merging. Do not tell the operator to expect a full daemon roll unless the `cephImage` changes.
+
+## 1.20 → 1.21
+
+Reviewed in #818 (v1.20.8 → 1.21.0). Chart tags drop the `v` prefix from 1.21.0 on.
+
+- **`ROOK_CREATE_CSI_OPERATOR_RESOURCES` renders null.** The operator chart's `configmap.yaml` reads `.Values.csi.createCsiOperatorResources`, but rook@7c67d598 removed that default from `values.yaml` (it is missing from 1.21.0 and master; v1.20.9 has it). Rook treats any value other than `"true"` as disabled and deletes `cephconnection/rook-ceph` and `clientprofile/rook-ceph`, which breaks every CSI mount. How the null lands depends on the apply path, checked with `--dry-run=server`: create → `""` (broken), merge patch → key removed (default `true`, fine), server-side apply → `""` (broken). Upgrades follow the release's previous method (`helm-controller upgrade.serverSideApply: auto`), and ours are `csa`. Read it with `kubectl -n rook-ceph get secret -l owner=helm,name=rook-ceph --sort-by=.metadata.creationTimestamp -o name | tail -1`, then decode `.data.release` (base64 → base64 → gunzip) → `.apply_method`. Fresh installs default to SSA. Fix: set `csi.createCsiOperatorResources: true` in our values. Re-check on every 1.21.x bump whether upstream restored the default.
+- **CSI images are no longer pinned by Rook.** The image-set ConfigMap is written empty, so the vendored ceph-csi-operator's built-in defaults apply (`internal/controller/defaults.go` at its tag). 1.21.0 vendors operator 1.1.0 → cephcsi v3.18.1 plus newer sidecars. The earlier note that plugin images follow the `csi.*` tags in the `rook-ceph` chart holds only up to 1.20.x. From 1.21, a Rook bump that moves the vendored operator also moves cephcsi.
+- **msgr2 required by default.** Already set here (`requireMsgr2: true`), and live krbd mounts use `:3300` with `ms_mode=prefer-crc`: check `/sys/bus/rbd/devices/*/config_info` from a `csi-rbdplugin` container.
+- **operator 1.1.0 NetworkPolicies** deny ingress and allow egress on the controller-manager and the (non-hostNetwork) ctrlplugins. Harmless while nothing ingresses to them (no webhooks, Services, csi-addons, or monitors). Re-check if a PodMonitor or csi-addons is ever enabled.
+- CRD check that worked: render the operator chart with `--include-crds` at both tags, convert with `yq -o=json`, and diff the set of `openAPIV3Schema` property paths per CRD version. 1.21.0 removed only `CephNVMeOFGateway.spec.pool` and `ObjectBucket.spec.authentication`.
+
+## Ceph majors and pre-releases
+
+Ceph `x.0.z` is dev, `x.1.z` is a release candidate, and `x.2.z` is stable. Renovate offers RCs as majors (#721 offered v21.1.2). Confirm with `src/ceph_release` at the tag (`gh api "repos/ceph/ceph/contents/src/ceph_release?ref=<tag>"`), which reads e.g. `21 umbrella dev`. Then check the running Rook supports the major: `supportedVersions` in `pkg/operator/ceph/version/version.go` at the Rook tag. If it doesn't, the CephCluster errors `allowUnsupported must be set to true` and the HelmRelease sits until its timeout and rolls back. A pre-release, or a major the running Rook does not support, is a hold.
 
 ## `network.provider: host`
 

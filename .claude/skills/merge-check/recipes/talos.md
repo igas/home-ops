@@ -17,6 +17,26 @@ The script copies `talos/` to a temp dir, strips `clusterconfig/` and `talsecret
 
 A long-lived Renovate branch can predate the workflow itself: #656 was opened 2026-08-22 and last built 2026-09-07, so `Talos Config` (added by #734) never ran on it and its `statusCheckRollup` simply has no such entry. An *absent* check is not a passing one — run the fallback locally and put a rebase in **Prep**.
 
+## Preflight: validate with the *new* talosctl, rendered and live
+
+talhelper validates with its own vendored machinery, not the target release. A Talos patch can still tighten node-side validation: 1.14.1 `7a2c4e8` added cross-document checks, and 1.14.2 `c792fa4` added hostname/search-domain checks. The node validates its **installed** config on boot, so check both the render and each node's live config with the target `talosctl` (download from the release and verify against `sha256sum.txt`):
+
+```sh
+for f in "$S"/rendered/kubernetes-*.yaml; do talosctl-NEW validate --mode metal -c "$f"; done
+for ip in 192.168.6.1 192.168.6.2 192.168.6.3 192.168.6.12; do
+  T=$(mktemp "$S/live.XXXXXX"); talosctl -n $ip get machineconfig v1alpha1 -o jsonpath='{.spec}' > "$T"
+  talosctl-NEW validate --mode metal -c "$T"; rm -f "$T"   # holds secrets: never print it, delete at once
+done
+```
+
+Leave out `--strict`: it turns the known `.machine.files` deprecation warning (#747) into an error. Baseline as of 1.14.2 is valid with that one warning.
+
+Renovate's body for `siderolabs/talos` can quote the wrong notes. On #753 it showed v1.14.0-beta.1 text under `v1.14.2`. Read `gh api repos/siderolabs/talos/releases/tags/vX.Y.Z --jq .body` instead.
+
+## Talos and kubelet PRs together
+
+tuppr runs one upgrade at a time cluster-wide: a `TalosUpgrade` and the `KubernetesUpgrade` never run concurrently ([coordination docs](https://tuppr.home-operations.com/coordination/)). Merging both is safe, but merge Talos first and let it finish, so a failure is attributable. Both edit `talos/talenv.yaml` on lines with an unchanged line between them, so they merge cleanly in either order. Check with a squash-merge simulation in a throwaway `git worktree`, not `git merge-tree` of one branch onto the other.
+
 ## 1.14: v1alpha1 `cluster.*` patches stop merging (migrated in #731)
 
 For the 1.14 contract talhelper emits the multi-document Kubernetes config (`KubeAPIServerConfig`, `KubeProxyConfig`, ...) and rejects the matching v1alpha1 fields with `kube-apiserver config is already set in v1alpha1 config (.cluster.apiServer)`. `talos/patches/controller/kubernetes.yaml` now carries the document kinds; `cluster.yaml` keeps what has to stay v1alpha1. `KubeClusterConfig` is deliberately absent: siderolabs/talos#14338 panics machined on any cluster with a service-account key.
@@ -35,7 +55,7 @@ Verify a render against a live node with a per-document diff, not the raw `apply
 
 ## 1.14.0: Secure Boot nodes boot with `lockdown=none`
 
-Release notes say `integrity` applies implicitly after `confidentiality` was dropped; siderolabs/talos#14237 shows it does not. Fix siderolabs/talos#14241 merged to main 2026-09-04, first release carrying it is after 1.14.0. Nodes with `machineSpec.secureboot: true` are affected (the three masters here). Options: accept until the fixed patch release, or add `lockdown=integrity` as an extra kernel arg in a new schematic (changes the schematic ID, so `talconfig.yaml` and the node's installed schematic both move).
+Release notes say `integrity` applies implicitly after `confidentiality` was dropped; siderolabs/talos#14237 shows it does not. Fix siderolabs/talos#14241 merged to main 2026-09-04. The first release carrying it is **1.14.1**, as siderolabs/pkgs `fd0c2b2` "add a kernel patch for EFI SecureBoot integrity lockdown" (tracked here as #729). Verify after rollout with `talosctl -n <masters> read /sys/kernel/security/lockdown`; the worker isn't Secure Boot and stays `[none]`. Nodes with `machineSpec.secureboot: true` are affected (the three masters here). Options: accept until the fixed patch release, or add `lockdown=integrity` as an extra kernel arg in a new schematic (changes the schematic ID, so `talconfig.yaml` and the node's installed schematic both move).
 
 ## tuppr health gate depends on Ceph
 
@@ -48,6 +68,14 @@ Installed extensions: `talosctl -n <ip> get extensions -o yaml` (includes the `s
 ```sh
 curl -s https://factory.talos.dev/version/vX.Y.Z/extensions/official | jq -r '.[].name'
 curl -s -o /dev/null -w '%{http_code}\n' https://factory.talos.dev/image/<schematic>/vX.Y.Z/installer-amd64.tar   # 302 = exists
+```
+
+The masters use `installer-secureboot`. The tarball endpoint returns 400 for `installer-secureboot-amd64.tar` at *every* version, including the one running, so check the OCI manifest instead. It can take a minute or more while the factory builds, so give it `--max-time 100`:
+
+```sh
+curl -s -o /dev/null --max-time 100 -w '%{http_code}\n' \
+  -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
+  https://factory.talos.dev/v2/installer-secureboot/<schematic>/manifests/vX.Y.Z   # 200 = exists
 ```
 
 ## etcd port move in 1.14

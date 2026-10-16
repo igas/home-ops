@@ -8,6 +8,19 @@ The `flux-operator` Renovate group has three members, all in `kubernetes/apps/fl
 
 The group rule in `.renovaterc.json5` matches by substring (`/flux-operator/`), so the MCP chart joins the group without its own rule. A bump PR that changes only one or two of the three OCIRepository tags means the group split, which is a finding.
 
+## The bump also moves Flux itself
+
+`flux-instance` pins `distribution.artifact: oci://ghcr.io/controlplaneio-fluxcd/flux-operator-manifests:vX` with `version: 2.x`. A new manifests artifact can ship a newer Flux release, and the operator then upgrades every controller to it. The flux-local diff only shows the artifact tag, so check the Flux version separately:
+
+```
+kubectl -n flux-system get fluxinstance flux -o jsonpath='{.status.lastAppliedRevision}{"\n"}'     # running Flux
+gh api 'repos/controlplaneio-fluxcd/flux-operator/contents/config/data/flux?ref=vNEW' --jq '[.[].name]|join(" ")'
+```
+
+If the newest `v2.*` directory differs from the running version, read the flux2 release notes for every version in between, plus the component changelogs they link. Then compare its Kubernetes compatibility table with `kubectl version`.
+
+helm-controller CRD-policy changes (for example v1.6.5's fix that stops `Create` from reapplying CRDs under SSA) don't reach us. `kubernetes/flux/cluster/ks.yaml` patches every HelmRelease with `install.crds` and `upgrade.crds: CreateReplace`.
+
 ## What `readonly` guards
 
 The MCP chart binds its ServiceAccount to `cluster-admin` (`rbac.create: true`, no narrower role on offer). `readonly: true` in the HelmRelease renders `--read-only=true`, which stops the server registering any tool not flagged read-only: reconcile, suspend, resume, apply, patch, delete, and install-instance never appear in the tool list (`cmd/mcp/toolbox/manager.go` at v0.60.0). With it off, anyone who can reach port 9090 holds cluster-admin through the MCP tools. The chart default is `false`.
