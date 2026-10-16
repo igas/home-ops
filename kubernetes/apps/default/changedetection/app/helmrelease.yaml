@@ -1,0 +1,153 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: changedetection
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: changedetection
+  interval: 1h
+  values:
+    controllers:
+      changedetection:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/dgtlmoon/changedetection.io
+              tag: 0.60.9@sha256:04eaae7915bad711160cb15abe160f6d3fabe98bbbd658509d4b7a654000fb2d
+            env:
+              BASE_URL: "https://{{ .Release.Name }}.igas.dev"
+              DISABLE_VERSION_CHECK: "true"
+              # The browser sidecar shares the Pod network namespace.
+              PLAYWRIGHT_DRIVER_URL: ws://localhost:3000
+              PORT: &port 5000
+              TZ: Australia/Sydney
+            probes:
+              # Liveness restarts the container, so it only fires on a hung
+              # process (period x threshold = 150s unresponsive), not a slow
+              # cold start. Readiness fails fast to pull the Pod from the
+              # Service. Startup gates both on the same endpoint with a 600s
+              # allowance. See docs/runbooks/probe-tuning.md.
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /worker-health
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /worker-health
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /worker-health
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 10
+                  failureThreshold: 60
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 10m
+              limits:
+                memory: 1Gi
+          browser:
+            image:
+              repository: ghcr.io/browserless/chromium
+              tag: v2.57.0@sha256:6bac628b3d8293f8fb251d3a6b63030dfc5a1cb0c7e5c39abe5efd8f4b25360b
+            env:
+              CONCURRENT: "4"
+              TIMEOUT: "60000"
+              TZ: Australia/Sydney
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 3000
+                  initialDelaySeconds: 0
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 5
+              readiness:
+                enabled: false
+              startup:
+                enabled: false
+            securityContext:
+              # Chromium writes its profile under the image's home directory,
+              # owned by blessuser (999), so this container keeps a writable
+              # root and its own UID.
+              runAsUser: 999
+              runAsGroup: 999
+              allowPrivilegeEscalation: false
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 10m
+              limits:
+                memory: 2Gi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        hostnames:
+          - "{{ .Release.Name }}.igas.dev"
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+    persistence:
+      config:
+        existingClaim: "{{ .Release.Name }}"
+        advancedMounts:
+          changedetection:
+            app:
+              - path: /datastore
+      tmp:
+        type: emptyDir
+        advancedMounts:
+          changedetection:
+            app:
+              - path: /tmp
+      # Chromium crashes on the 64Mi /dev/shm the runtime gives by default.
+      shm:
+        type: emptyDir
+        medium: Memory
+        sizeLimit: 1Gi
+        advancedMounts:
+          changedetection:
+            browser:
+              - path: /dev/shm
