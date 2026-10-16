@@ -38,6 +38,12 @@
       overrideDepName: "{{packageName}}",
     },
     {
+      description: "Ceph v21.1.x are release candidates; wait for v21.2.0 stable",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["quay.io/ceph/ceph"],
+      allowedVersions: "!/^v?21\\.1\\./",
+    },
+    {
       description: "Auto-merge GitHub Actions",
       matchManagers: ["github-actions"],
       automerge: true,
