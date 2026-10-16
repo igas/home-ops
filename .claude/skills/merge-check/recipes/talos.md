@@ -57,9 +57,21 @@ Verify a render against a live node with a per-document diff, not the raw `apply
 
 Release notes say `integrity` applies implicitly after `confidentiality` was dropped; siderolabs/talos#14237 shows it does not. Fix siderolabs/talos#14241 merged to main 2026-09-04. The first release carrying it is **1.14.1**, as siderolabs/pkgs `fd0c2b2` "add a kernel patch for EFI SecureBoot integrity lockdown" (tracked here as #729). Verify after rollout with `talosctl -n <masters> read /sys/kernel/security/lockdown`; the worker isn't Secure Boot and stays `[none]`. Nodes with `machineSpec.secureboot: true` are affected (the three masters here). Options: accept until the fixed patch release, or add `lockdown=integrity` as an extra kernel arg in a new schematic (changes the schematic ID, so `talconfig.yaml` and the node's installed schematic both move).
 
+Since 2026-10-16 Secure Boot is off in k8s-master-01's firmware (not in `talconfig.yaml`), so master-01 reads `[none]` by design. Only master-02 and master-03 should show `[integrity]`.
+
+## Renovate rebases past the reviewed version
+
+#753 was reviewed at v1.14.2 and merged at v1.14.3: Renovate rebased it after the verdict, and the patch had no GitHub release yet (only a tag and factory images). Before merging a node-layer PR, compare `headRefOid` with the SHA in the verdict. If it moved, re-review. For a tag with no release, read `gh api repos/siderolabs/talos/compare/vOLD...vNEW` for the commit list. The factory builds new-version installer images on demand, so tuppr's first pre-pull can time out with "no pull progress after 1m30s". It retries and succeeds once the build finishes.
+
+## A node that never comes back: suspect the NIC first
+
+On 2026-10-15 master-01 shut down cleanly for v1.14.3 and then had no network presence for 72 minutes (no ping, no ARP, no Talos API). The console showed `e1000e ... eno1: Detected Hardware Unit Hang` on every boot attempt: the kernel booted, but the NIC wedged. systemd-boot's boot counter (`Talos-vX~1.efi`) falls back to the previous UKI at the next power cycle, but only until Talos logs `removing fallback entry` on a successful boot. Check the NIC drivers before blaming the boot chain: `talosctl -n <ip> get links -o json | jq -r 'select(.spec.type=="ether" and (.spec.busPath//"")!="") | "\(.metadata.id)=\(.spec.driver)"'`. master-01 is the only `e1000e` node (master-02 and master-03 use `r8169`, worker-02 uses `igc`). Its TSO is off via an `EthernetConfig` in `patches/nodes/master-01.yaml` (#848). A kernel bump that touches `e1000e` is worth a finding. If the hang returns, disable `tx-generic-segmentation` and `rx-gro` next.
+
+`task talos:apply-node` applies the last *generated* `clusterconfig/`, not the patches. Run `task talos:generate-config` first, dry-run, apply, then check the live resource (for example `talosctl get ethernetstatus eno1`).
+
 ## tuppr health gate depends on Ceph
 
-`talosupgrade.yaml` requires `CephCluster status.ceph.health == HEALTH_OK`. After a cephx rotation the four `AUTH_INSECURE_*` warnings keep the cluster at `HEALTH_WARN` and the plan sits `Pending`. Check `ceph health detail` before the verdict and point at the mute in [rook-ceph.md](rook-ceph.md) when that is the only thing red.
+`talosupgrade.yaml` requires `CephCluster status.ceph.health == HEALTH_OK`. Each node reboot takes that node's OSD down for about 5 minutes, so expect a pause between nodes. A `Failed` TalosUpgrade is terminal; resume it with `kubectl annotate talosupgrade talos tuppr.home-operations.com/reset="$(date)"`, which skips nodes already at the target version. After a cephx rotation the four `AUTH_INSECURE_*` warnings keep the cluster at `HEALTH_WARN` and the plan sits `Pending`. Check `ceph health detail` before the verdict and point at the mute in [rook-ceph.md](rook-ceph.md) when that is the only thing red.
 
 ## Schematic and extension check
 
