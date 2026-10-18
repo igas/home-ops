@@ -31,6 +31,8 @@ jobs:
           files: |
             talos/**
             scripts/talos-render-check.sh
+            scripts/talos-api-check.py
+            scripts/tests/test_talos_api_check.py
             .github/workflows/talos.yaml
 
   render:
@@ -61,6 +63,9 @@ jobs:
         run: |
           set -o pipefail
           scripts/talos-render-check.sh --out-dir "${RUNNER_TEMP}/clusterconfig" 2>&1 | tee "${RUNNER_TEMP}/render.log"
+
+      - name: Test API check failure handling
+        run: python3 -m unittest discover -s scripts/tests -p test_talos_api_check.py -v
 
       - name: Summary
         if: ${{ always() && steps.render.outcome != 'skipped' }}

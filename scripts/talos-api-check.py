@@ -48,6 +48,7 @@ with opener.open("https://k8s.igas.dev:6443/api/v1/nodes/" + NODE_NAME, timeout=
 if node["metadata"]["name"] != NODE_NAME:
     raise RuntimeError("API returned the wrong node")
 print("TLS-verified node GET with kubelet credentials: OK; unschedulable=" + str(node["spec"].get("unschedulable", False)))
+print("TALOS_API_CHECK_OK " + NODE_NAME)
 '''
 
 
@@ -63,16 +64,23 @@ def main():
         csv.writer(args, lineterminator="").writerow([
             "python3", "-c", f"import base64, sys; sys.tracebacklimit=0; exec(base64.b64decode('{encoded}'))"
         ])
-        subprocess.run([
+        result = subprocess.run([
             "talosctl", "--nodes", node["ipAddress"], "debug", IMAGE,
             "--args", args.getvalue(),
-        ], check=True, timeout=120)
+        ], check=True, timeout=120, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        print(result.stdout, end="", flush=True)
+        if f"TALOS_API_CHECK_OK {node['hostname']}" not in result.stdout.splitlines():
+            raise RuntimeError(f"{node['hostname']}: debug stream ended without a completed probe")
     print("All Talos hosts passed. Scheduling state was not changed.")
 
 
 if __name__ == "__main__":
     try:
         main()
-    except (subprocess.SubprocessError, OSError) as error:
+    except (subprocess.SubprocessError, OSError, RuntimeError) as error:
+        if isinstance(error, subprocess.CalledProcessError) and error.stdout:
+            print(error.stdout, end="", file=sys.stderr)
+        elif isinstance(error, RuntimeError):
+            print(error, file=sys.stderr)
         print(f"API check failed: {type(error).__name__}", file=sys.stderr)
         sys.exit(1)

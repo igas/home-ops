@@ -52,6 +52,7 @@ depend on the k8s-gateway migration in #828.
 
 ```sh
 task talos:render-check
+python3 -m unittest discover -s scripts/tests -p test_talos_api_check.py -v
 task talos:check-api
 # Run check-api again after at least 60 seconds to cross the A-record TTL.
 ```
@@ -67,6 +68,8 @@ three intended control-plane addresses. It then GETs that node through
 `https://k8s.igas.dev:6443` with the node's kubelet client certificate and
 cluster CA. Certificate verification and hostname validation stay enabled.
 Credentials remain on the node; no credential values are printed.
+Each node must emit a completion marker. A zero `talosctl debug` exit status
+alone is insufficient because some stream failures do not set a nonzero status.
 
 This checks the DNS, TLS, authentication and node-read prerequisites of
 cordon/drain without changing scheduling. It does not test PATCH, eviction,
