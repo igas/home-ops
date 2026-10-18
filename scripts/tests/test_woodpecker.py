@@ -57,6 +57,13 @@ class WoodpeckerManifests(unittest.TestCase):
         term = affinity["podAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"][0]
         self.assertEqual(term["matchLabelKeys"], ["woodpecker-ci.org/task-uuid"])
         self.assertEqual(term["topologyKey"], "kubernetes.io/hostname")
+        selector = term.get("labelSelector", {})
+        static_keys = set(selector.get("matchLabels", {}))
+        static_keys.update(item["key"] for item in selector.get("matchExpressions", []))
+        self.assertTrue(
+            static_keys.isdisjoint(term["matchLabelKeys"]),
+            "Kubernetes rejects a label key present in both labelSelector and matchLabelKeys",
+        )
         self.assertNotIn("podAntiAffinity", affinity)
 
     def test_steps_cannot_override_isolation(self):

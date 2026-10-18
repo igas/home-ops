@@ -159,10 +159,7 @@ spec:
         WOODPECKER_BACKEND_K8S_POD_AFFINITY: |
           podAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:
-              - labelSelector:
-                  matchExpressions:
-                    - key: woodpecker-ci.org/task-uuid
-                      operator: Exists
+              - labelSelector: {}
                 matchLabelKeys:
                   - woodpecker-ci.org/task-uuid
                 topologyKey: kubernetes.io/hostname
