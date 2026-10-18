@@ -53,11 +53,13 @@ Two kube-apiserver changes come with the `KubeAPIServerConfig` document type its
 
 Verify a render against a live node with a per-document diff, not the raw `apply-config --dry-run` output: installed configs written under an older contract also gain `DiscoveryServiceConfig`, `ResolverConfig.hostDNS`, `KubeNetworkConfig`, `KubeAudit/Authentication/AuthorizerConfig` and `FilesystemTrimConfig`, all pure moves. Watch `cluster.controlPlane.endpoint`: kube-apiserver derives `--service-account-issuer` and `--api-audiences` from it, so a changed endpoint would invalidate in-cluster tokens until rotation. Since #736 both flags are pinned in `KubeAPIServerConfig.extraArgs` (neither is on the merge denylist, and extraArgs overwrite the derived value), which is what let the endpoint move to `https://k8s.igas.dev:6443`; the pins are still the pre-move value. Treat a rendered change to either flag as a finding, and read [docs/runbooks/talos-control-plane-endpoint.md](../../../../docs/runbooks/talos-control-plane-endpoint.md) before touching them.
 
-## 1.14.0: Secure Boot nodes boot with `lockdown=none`
+## Secure Boot removal and the 1.14.0 lockdown regression
 
-Release notes say `integrity` applies implicitly after `confidentiality` was dropped; siderolabs/talos#14237 shows it does not. Fix siderolabs/talos#14241 merged to main 2026-09-04. The first release carrying it is **1.14.1**, as siderolabs/pkgs `fd0c2b2` "add a kernel patch for EFI SecureBoot integrity lockdown" (tracked here as #729). Verify after rollout with `talosctl -n <masters> read /sys/kernel/security/lockdown`; the worker isn't Secure Boot and stays `[none]`. Nodes with `machineSpec.secureboot: true` are affected (the three masters here). Options: accept until the fixed patch release, or add `lockdown=integrity` as an extra kernel arg in a new schematic (changes the schematic ID, so `talconfig.yaml` and the node's installed schematic both move).
+Talos 1.14.0 dropped `confidentiality` but did not apply the promised implicit `integrity` mode (siderolabs/talos#14237). The fix, siderolabs/talos#14241, first shipped in **1.14.1** via siderolabs/pkgs `fd0c2b2`, "add a kernel patch for EFI SecureBoot integrity lockdown".
 
-Since 2026-10-16 Secure Boot is off in k8s-master-01's firmware (not in `talconfig.yaml`), so master-01 reads `[none]` by design. Only master-02 and master-03 should show `[integrity]`.
+Secure Boot is not required for this cluster. #729 now tracks its removal rather than restoring lockdown. The repo uses `machineSpec.secureboot: false` and regular `installer/` images, preserving schematic IDs. Keep the local, git-ignored `nodes.yaml` input consistent. `[none]` is acceptable after removal; no `lockdown=integrity` argument or replacement schematic is needed.
+
+Repo configuration is not proof of firmware or installed-image state. As last reported on 2026-10-16, master-01 had firmware Secure Boot disabled, while master-02 and master-03 still used it. Before any non-Secure-Boot installer upgrade, follow the operator checklist in [#729](https://github.com/igas/home-ops/issues/729): arrange console access, prevent concurrent automatic upgrades, verify encryption is not TPM-bound, and disable firmware Secure Boot one node at a time. Keep UEFI mode and enrolled keys. Check `talosctl -n <ip> get securitystate` for `SecureBoot: false` and restore cluster health between nodes. Verify the installed UKI-to-regular-installer transition is supported before upgrading; do not reinstall or wipe a node as part of this change. Config generation alone and a completed tuppr version upgrade do not migrate boot assets. Keep #729 open until live verification is recorded for every master.
 
 ## Renovate rebases past the reviewed version
 
@@ -82,12 +84,12 @@ curl -s https://factory.talos.dev/version/vX.Y.Z/extensions/official | jq -r '.[
 curl -s -o /dev/null -w '%{http_code}\n' https://factory.talos.dev/image/<schematic>/vX.Y.Z/installer-amd64.tar   # 302 = exists
 ```
 
-The masters use `installer-secureboot`. The tarball endpoint returns 400 for `installer-secureboot-amd64.tar` at *every* version, including the one running, so check the OCI manifest instead. It can take a minute or more while the factory builds, so give it `--max-time 100`:
+The repo now selects regular `installer/` images for all nodes. Check the OCI manifest for that exact repository and schematic. It can take a minute or more while the factory builds, so give it `--max-time 100`:
 
 ```sh
 curl -s -o /dev/null --max-time 100 -w '%{http_code}\n' \
   -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json' \
-  https://factory.talos.dev/v2/installer-secureboot/<schematic>/manifests/vX.Y.Z   # 200 = exists
+  https://factory.talos.dev/v2/installer/<schematic>/manifests/vX.Y.Z   # 200 = exists
 ```
 
 ## etcd port move in 1.14
