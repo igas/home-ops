@@ -1,0 +1,35 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: woodpecker
+spec:
+  components:
+    - ../../../../components/volsync
+  dependsOn:
+    - name: cloudnative-pg-cluster
+      namespace: database
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
+    - name: volsync
+      namespace: volsync-system
+    - name: onepassword
+      namespace: external-secrets
+    - name: woodpecker-builds
+      namespace: woodpecker-builds
+  interval: 1h
+  path: ./kubernetes/apps/woodpecker/woodpecker/app
+  postBuild:
+    substitute:
+      APP: woodpecker
+      VOLSYNC_CAPACITY: 10Gi
+      # After the database dump at 01:00 Australia/Sydney in either DST state.
+      VOLSYNC_SCHEDULE: "0 17 * * *"
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: woodpecker
+  wait: false

@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: woodpecker-builds
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  labels:
+    # Baseline blocks privileged containers, host namespaces and hostPath volumes.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.37

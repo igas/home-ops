@@ -1,0 +1,87 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: woodpecker-database-backup
+spec:
+  # 01:00 exists even on Sydney's spring daylight-saving transition.
+  schedule: "0 1 * * *"
+  timeZone: Australia/Sydney
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          # The server and dump job must share the node for the RWO claim.
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      statefulset.kubernetes.io/pod-name: woodpecker-server-0
+                  topologyKey: kubernetes.io/hostname
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: pg-dump
+              # Match the shared PostgreSQL major version. No superuser credentials.
+              image: ghcr.io/cloudnative-pg/postgresql:18.1-202512220807-standard-trixie
+              envFrom:
+                - secretRef:
+                    name: woodpecker-database-secret
+              env:
+                - name: TZ
+                  value: Australia/Sydney
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  umask 077
+                  dir=/data/database-backups
+                  mkdir -p "$dir"
+                  tmp="$dir/woodpecker.dump.tmp"
+                  trap 'rm -f "$tmp"' EXIT
+                  pg_dump --format=custom --no-owner --no-acl --file="$tmp"
+                  pg_restore --list "$tmp" > /dev/null
+                  if [ -f "$dir/woodpecker.dump" ]; then
+                    mv -f "$dir/woodpecker.dump" "$dir/woodpecker.previous.dump"
+                  fi
+                  mv -f "$tmp" "$dir/woodpecker.dump"
+                  date -u +%Y-%m-%dT%H:%M:%SZ > "$dir/last-success"
+                  echo "Woodpecker database dump completed"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: woodpecker
+            - name: tmp
+              emptyDir: {}

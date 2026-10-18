@@ -1,0 +1,65 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/networking.k8s.io/networkpolicy_v1.json
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: build-isolation
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Workflow services need to be reachable from step Pods in this namespace.
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: woodpecker-ci.org/task-uuid
+                operator: Exists
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: woodpecker-ci.org/task-uuid
+                operator: Exists
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 0.0.0.0/8
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 224.0.0.0/4
+              - 240.0.0.0/4
+---
+# Native policy handles CIDRs; Cilium also blocks node-local and API identities.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: deny-build-node-access
+spec:
+  endpointSelector: {}
+  enableDefaultDeny:
+    ingress: false
+    egress: false
+  egressDeny:
+    - toEntities:
+        - host
+        - remote-node
+        - kube-apiserver

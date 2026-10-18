@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: woodpecker-database-backup
+spec:
+  groups:
+    - name: woodpecker.database-backup
+      rules:
+        - alert: WoodpeckerDatabaseBackupStale
+          expr: |
+            (
+              time() - kube_cronjob_status_last_successful_time{namespace="woodpecker", cronjob="woodpecker-database-backup"} > 97200
+            ) or (
+              (time() - kube_cronjob_created{namespace="woodpecker", cronjob="woodpecker-database-backup"} > 97200)
+              unless on (namespace, cronjob)
+              kube_cronjob_status_last_successful_time{namespace="woodpecker", cronjob="woodpecker-database-backup"}
+            )
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: Woodpecker has no successful database dump in the last 27 hours
+            description: Check the dump CronJob and VolSync backups before relying on database recovery.

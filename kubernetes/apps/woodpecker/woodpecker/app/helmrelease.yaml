@@ -1,0 +1,197 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: woodpecker
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: woodpecker
+  interval: 1h
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              group: apps
+              version: v1
+              kind: StatefulSet
+            patch: |-
+              - op: add
+                path: /metadata/annotations
+                value:
+                  reloader.stakater.com/auto: "true"
+          - target:
+              group: apps
+              version: v1
+              kind: StatefulSet
+              name: woodpecker-server
+            patch: |-
+              - op: add
+                path: /spec/template/spec/containers/0/startupProbe
+                value:
+                  httpGet:
+                    path: /healthz
+                    port: 8000
+                  periodSeconds: 10
+                  timeoutSeconds: 10
+                  failureThreshold: 60
+  values:
+    server:
+      fullnameOverride: woodpecker-server
+      image:
+        tag: v3.19.0
+      createAgentSecret: false
+      env:
+        TZ: Australia/Sydney
+        WOODPECKER_HOST: https://ci.igas.dev
+        WOODPECKER_ADMIN: igas
+        WOODPECKER_OPEN: "false"
+        WOODPECKER_REPO_OWNERS: igas,visiblelightio
+        WOODPECKER_GITHUB: "true"
+        WOODPECKER_GITHUB_PUBLIC_ONLY: "false"
+        WOODPECKER_DEFAULT_APPROVAL_MODE: forks
+        WOODPECKER_DATABASE_DRIVER: postgres
+        WOODPECKER_DATABASE_MAX_CONNECTIONS: "10"
+        WOODPECKER_DATABASE_IDLE_CONNECTIONS: "2"
+        WOODPECKER_PLUGINS_PRIVILEGED: ""
+        WOODPECKER_DISABLE_USER_AGENT_REGISTRATION: "true"
+      extraSecretNamesForEnvFrom:
+        - woodpecker-secret
+        - woodpecker-database-secret
+      initContainers:
+        - name: init-db
+          image: ghcr.io/home-operations/postgres-init:18.6.0
+          env:
+            # The application database may not exist on first startup.
+            - name: PGDATABASE
+              value: postgres
+          envFrom:
+            - secretRef:
+                name: woodpecker-database-secret
+            - secretRef:
+                name: woodpecker-db-init-secret
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      # Use the restore-aware VolSync claim instead of a chart-owned claim.
+      persistentVolume:
+        enabled: false
+      extraVolumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: woodpecker
+        - name: tmp
+          emptyDir: {}
+      extraVolumeMounts:
+        - name: data
+          mountPath: /var/lib/woodpecker
+        - name: tmp
+          mountPath: /tmp
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          memory: 1Gi
+      probes:
+        liveness:
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readiness:
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 3
+    agent:
+      fullnameOverride: woodpecker-agent
+      replicaCount: 1
+      image:
+        tag: v3.19.0
+      mapAgentSecret: false
+      extraSecretNamesForEnvFrom:
+        - woodpecker-agent-secret
+      serviceAccount:
+        name: woodpecker-agent
+        # RBAC is limited to the separate build namespace by the chart.
+        rbac:
+          create: true
+      env:
+        TZ: Australia/Sydney
+        WOODPECKER_SERVER: woodpecker-server:9000
+        WOODPECKER_MAX_WORKFLOWS: "4"
+        WOODPECKER_BACKEND: kubernetes
+        WOODPECKER_BACKEND_K8S_NAMESPACE: woodpecker-builds
+        WOODPECKER_BACKEND_K8S_NAMESPACE_PER_ORGANIZATION: "false"
+        WOODPECKER_BACKEND_K8S_STORAGE_CLASS: ceph-block
+        WOODPECKER_BACKEND_K8S_STORAGE_RWX: "false"
+        WOODPECKER_BACKEND_K8S_VOLUME_SIZE: 10Gi
+        WOODPECKER_BACKEND_K8S_ALLOW_NATIVE_SECRETS: "false"
+        WOODPECKER_BACKEND_K8S_SERVICE_ACCOUNT_NAME_ALLOW_FROM_STEP: "false"
+        WOODPECKER_BACKEND_K8S_POD_LABELS_ALLOW_FROM_STEP: "false"
+        WOODPECKER_BACKEND_K8S_POD_ANNOTATIONS_ALLOW_FROM_STEP: "false"
+        WOODPECKER_BACKEND_K8S_POD_NODE_SELECTOR_ALLOW_FROM_STEP: "false"
+        WOODPECKER_BACKEND_K8S_POD_TOLERATIONS_ALLOW_FROM_STEP: "false"
+        WOODPECKER_BACKEND_K8S_RUNTIME_CLASS_ALLOW_FROM_STEP: "false"
+        WOODPECKER_BACKEND_K8S_POD_AFFINITY_ALLOW_FROM_STEP: "false"
+        # Same-workflow steps share one RWO workspace. No cross-workflow anti-affinity.
+        # Kubernetes 1.37 supports matchLabelKeys; the first Pod self-matches.
+        WOODPECKER_BACKEND_K8S_POD_AFFINITY: |
+          podAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                    - key: woodpecker-ci.org/task-uuid
+                      operator: Exists
+                matchLabelKeys:
+                  - woodpecker-ci.org/task-uuid
+                topologyKey: kubernetes.io/hostname
+      persistence:
+        enabled: true
+        size: 1Gi
+        storageClass: ceph-block
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      extraVolumes:
+        - name: tmp
+          emptyDir: {}
+      extraVolumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          memory: 512Mi
