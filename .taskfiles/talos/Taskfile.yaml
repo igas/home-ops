@@ -3,6 +3,13 @@ version: '3'
 
 tasks:
 
+  check-api:
+    desc: Check API DNS and TLS-authenticated node reads from every Talos host
+    cmd: python3 {{.SCRIPTS_DIR}}/talos-api-check.py
+    preconditions:
+      - test -f {{.TALOSCONFIG}}
+      - which python3 talosctl yq
+
   generate-config:
     desc: Generate Talos configuration
     dir: '{{.TALOS_DIR}}'

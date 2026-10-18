@@ -69,6 +69,15 @@ echo "secretboxEncryptionSecret: $(yq '.secrets.secretboxencryptionsecret' "$WOR
   talhelper genconfig --offline-mode --secret-file talsecret.yaml --out-dir ./clusterconfig
 )
 
+# The API name is LAN-only. Every rendered node must use the LAN resolver,
+# never a public fallback which can return a valid NXDOMAIN (#860).
+for config in "$WORK_DIR"/clusterconfig/kubernetes-*.yaml; do
+  if [[ "$(yq 'select(.kind == "ResolverConfig") | .nameservers | map(.address) | join(",")' "$config")" != "192.168.1.1" ]]; then
+    echo "${config##*/}: API DNS requires only the LAN resolver 192.168.1.1" >&2
+    exit 1
+  fi
+done
+
 if [[ -n "$OUT_DIR" ]]; then
   mkdir -p "$OUT_DIR"
   cp -R "$WORK_DIR/clusterconfig/." "$OUT_DIR"

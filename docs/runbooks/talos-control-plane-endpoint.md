@@ -74,6 +74,10 @@ itself cut kubelet off from the API server. `talosctl kubeconfig` also starts
 emitting `server: https://k8s.igas.dev:6443`, which puts the same DNS in the
 admin path.
 
+The public DNS fallback was removed after #860. See
+[Talos API DNS checks](talos-api-dns.md) for the failure evidence, live host
+checks, and the requirement that every upstream serve the LAN API records.
+
 ## Phase 1: move the endpoint, pin the issuer (applied 2026-09-13, #736)
 
 `talconfig.yaml` moves to `https://k8s.igas.dev:6443`, and
