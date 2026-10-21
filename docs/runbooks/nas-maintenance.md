@@ -10,6 +10,13 @@ task nas:down                      # Alerts silenced for 2 hours
 Only proceed when the command succeeds and says it is safe to update. It does
 not update or reboot the NAS itself.
 
+Both commands print progress to stderr, including the resources blocking a
+wait. A suspended Kustomization whose current-generation health check was
+explicitly canceled is treated as idle even if Flux left `Reconciling=True`.
+Other active reconciliation still blocks shutdown until it finishes or the
+timeout expires. After an earlier timeout, retry `nas:down` with the same state
+file; do not delete the saved original settings.
+
 The task saves state in `.private/nas-maintenance.json`, bound to the current
 Kubernetes context and cluster UID. Keep that file until restoration succeeds.
 The Task wrapper uses the repo's kubeconfig. Direct script calls use your

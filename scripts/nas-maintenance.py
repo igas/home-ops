@@ -6,6 +6,7 @@ State is local: keep it until `up` succeeds. No NAS update is performed here.
 """
 
 import argparse
+from datetime import datetime
 import fcntl
 import json
 import os
@@ -14,11 +15,18 @@ import re
 import subprocess
 import sys
 import time
+from zoneinfo import ZoneInfo
 
 
 NAS = "192.168.3.5"
 DEPENDENTS = {"autobrr", "kometa", "recyclarr"}
-FLUX = ("kustomizations.kustomize.toolkit.fluxcd.io", "helmreleases.helm.toolkit.fluxcd.io")
+KUSTOMIZATIONS = "kustomizations.kustomize.toolkit.fluxcd.io"
+FLUX = (KUSTOMIZATIONS, "helmreleases.helm.toolkit.fluxcd.io")
+
+
+def log(message):
+    timestamp = datetime.now(ZoneInfo("Australia/Sydney")).strftime("%H:%M:%S %Z")
+    print(f"[{timestamp}] {message}", file=sys.stderr, flush=True)
 
 
 def kubectl(*args):
@@ -140,11 +148,14 @@ def pending(state, draining=False):
 
 
 def wait_for_quiet(state, timeout, draining=False):
+    log("Waiting for backup controller and scheduled jobs to finish" if draining
+        else "Waiting for NAS consumer pods to stop")
     deadline = time.monotonic() + timeout
     while True:
         busy = pending(state, draining=draining)
         if not busy:
             return
+        log("Still waiting for: " + ", ".join(busy))
         if time.monotonic() >= deadline:
             raise RuntimeError("Still using NAS or finishing backups: " + ", ".join(busy))
         time.sleep(5)
@@ -154,6 +165,7 @@ def down(args, path, state):
     if state["phase"] == "restoring":
         raise RuntimeError("Restore already started; retry up before starting another maintenance window")
     # Save the complete restore plan before the first cluster mutation.
+    log(f'Suspending Flux reconciliation for {len(state["flux"])} resources')
     for entry in state["flux"]:
         patch(entry, {"suspend": True})
     deadline = time.monotonic() + args.timeout
@@ -172,19 +184,36 @@ def down(args, path, state):
                     unsuspended.append(entry)
                 if any(c.get("type") == "Reconciling" and c.get("status") == "True"
                        for c in obj.get("status", {}).get("conditions", [])):
-                    reconciling.append(entry["name"])
+                    conditions = {c["type"]: c for c in obj["status"]["conditions"]}
+                    ready = conditions.get("Ready", {})
+                    generation = obj["metadata"].get("generation")
+                    # kustomize-controller cancels health checks on a new
+                    # reconcile request, including suspension, but leaves
+                    # Reconciling=True when Ready=False/HealthCheckCanceled.
+                    # Only accept explicit cancellation for this generation.
+                    canceled = (kind == KUSTOMIZATIONS and obj["spec"].get("suspend")
+                                and generation is not None
+                                and ready.get("status") == "False"
+                                and ready.get("reason") == "HealthCheckCanceled"
+                                and ready.get("observedGeneration") == generation
+                                and conditions["Reconciling"].get("observedGeneration") == generation)
+                    if not canceled:
+                        reconciling.append(f'{entry["namespace"]}/{entry["name"]}')
         if not reconciling and not unsuspended:
             break
         # A parent that was already running may have overwritten a child's
         # suspension. Reapply it and verify again after reconcilers are idle.
         for entry in unsuspended:
             patch(entry, {"suspend": True})
+        log("Waiting for Flux: " + ", ".join(
+            reconciling + [f'{e["namespace"]}/{e["name"]} suspension' for e in unsuspended]))
         if time.monotonic() >= deadline:
             raise RuntimeError("Flux not quiescent; retry down: " + ", ".join(reconciling))
         time.sleep(5)
     # In-flight reconciliation may have added consumers after the first
     # snapshot. Discover again once GitOps is idle without losing original
     # restore values, including on retries after workloads were scaled down.
+    log("Flux suspended; refreshing NAS consumer discovery")
     refreshed = snapshot(state["context"])
     state["claims"] = [list(claim) for claim in sorted(
         {tuple(claim) for claim in state["claims"] + refreshed["claims"]})]
@@ -205,6 +234,7 @@ def down(args, path, state):
     for label in ("deployment", "statefulset", "pod", "job"):
         matchers.append(f'{label}=~{json.dumps(f"({pattern}|volsync)(-.*)?")}')
     # A retry also renews coverage if the previous silences have expired.
+    log(f"Creating maintenance alert silences for {args.duration}")
     for matcher in matchers:
         silence = amtool("silence", "add", f"--duration={args.duration}",
                          f"--author={os.environ.get('USER', 'nas-maintenance')}",
@@ -212,14 +242,17 @@ def down(args, path, state):
         state["silences"].append(silence)
         save(path, state)
     for entry in state["cronjobs"]:
+        log(f'Suspending CronJob {entry["namespace"]}/{entry["name"]}')
         patch(entry, {"suspend": True})
     for entry in state["workloads"]:
         if entry["backup_controller"]:
+            log(f'Stopping backup controller {entry["namespace"]}/{entry["name"]}')
             scale(entry, 0)
     # Drain scheduled work while Plex and the other APIs are still available.
     wait_for_quiet(state, args.timeout, draining=True)
     for entry in state["workloads"]:
         if not entry["backup_controller"]:
+            log(f'Stopping {entry["kind"]}/{entry["namespace"]}/{entry["name"]}')
             scale(entry, 0)
     wait_for_quiet(state, args.timeout)
     state["phase"] = "down"
@@ -234,13 +267,16 @@ def up(args, path, state):
     for backup in (False, True):
         workloads = [entry for entry in state["workloads"] if entry["backup_controller"] == backup]
         for entry in workloads:
+            log(f'Restoring {entry["kind"]}/{entry["namespace"]}/{entry["name"]} to {entry["replicas"]} replicas')
             scale(entry, entry["replicas"])
         for entry in workloads:
             if entry["replicas"]:
+                log(f'Waiting for {entry["namespace"]}/{entry["name"]} rollout')
                 kubectl("rollout", "status", *target(entry), f"--timeout={max(1, args.timeout)}s")
     for entry in state["cronjobs"]:
         patch(entry, {"suspend": entry["suspend"]})
     # Restore Helm releases before their parent Kustomizations.
+    log("Restoring original Flux suspension settings")
     for entry in reversed(state["flux"]):
         patch(entry, {"suspend": entry["suspend"]})
     for silence in state["silences"]:
@@ -263,6 +299,7 @@ def main():
     os.umask(0o077)
     with path.with_suffix(".lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        log(f"Starting NAS maintenance {args.action}; checking Kubernetes context and saved state")
         context = kubectl("config", "current-context")
         cluster_uid = json.loads(kubectl("get", "namespace", "kube-system", "-o", "json"))["metadata"]["uid"]
         if path.exists():
@@ -272,6 +309,7 @@ def main():
         else:
             if args.action == "up":
                 raise RuntimeError("No saved maintenance state; refusing to guess original settings")
+            log("Discovering NAS consumers and recording original settings")
             state = snapshot(context)
             state["cluster_uid"] = cluster_uid
             save(path, state)

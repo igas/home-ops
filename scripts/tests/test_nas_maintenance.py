@@ -3,6 +3,8 @@
 import json
 import os
 from pathlib import Path
+import select
+import signal
 import subprocess
 import sys
 import tempfile
@@ -43,11 +45,12 @@ class NasMaintenance(unittest.TestCase):
         }
         cli = self.path / "kubectl"
         cli.write_text('''#!/usr/bin/env python3
-import json, os, sys
+import json, os, sys, time
 from pathlib import Path
 a = sys.argv[1:]
 with open(os.environ["CALLS"], "a") as f: f.write(json.dumps(a) + "\\n")
 if os.environ.get("FAIL_ON") and os.environ["FAIL_ON"] in " ".join(a): sys.exit(1)
+if os.environ.get("BLOCK_ON") and os.environ["BLOCK_ON"] in " ".join(a): time.sleep(5)
 if a[:2] == ["config", "current-context"]: print("home"); sys.exit()
 if a[:3] == ["get", "namespace", "kube-system"]:
     print(json.dumps({"metadata": {"uid": os.environ.get("CLUSTER_UID", "cluster-1")}})); sys.exit()
@@ -235,6 +238,73 @@ sys.exit(0)
         result = self.run_cli("down", LATE_CRONJOB=json.dumps(cron))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(any(a[0] == "patch" and "cronjobs/late-copy" in a for a in self.calls()))
+
+    def test_suspended_canceled_health_check_does_not_block_shutdown(self):
+        obj = self.data["kustomizations.kustomize.toolkit.fluxcd.io"][0]
+        obj["metadata"]["generation"] = 2
+        obj["status"] = {"observedGeneration": 1, "conditions": [
+            {"type": "Reconciling", "status": "True", "observedGeneration": 2,
+             "reason": "ProgressingWithRetry"},
+            {"type": "Ready", "status": "False", "observedGeneration": 2,
+             "reason": "HealthCheckCanceled"},
+        ]}
+        result = self.run_cli("down")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("safe to update", result.stdout)
+
+    def test_cancellation_of_older_generation_does_not_bypass_active_reconciliation(self):
+        obj = self.data["kustomizations.kustomize.toolkit.fluxcd.io"][0]
+        obj["metadata"]["generation"] = 3
+        obj["status"] = {"conditions": [
+            {"type": "Reconciling", "status": "True", "observedGeneration": 3},
+            {"type": "Ready", "status": "False", "observedGeneration": 2,
+             "reason": "HealthCheckCanceled"},
+        ]}
+        result = self.run_cli("down")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(any(a[0] == "scale" for a in self.calls()))
+        self.assertIn("Waiting for Flux: flux-system/flux-system", result.stderr)
+
+    def test_progress_is_visible_while_kubectl_is_still_running(self):
+        self.cluster.write_text(json.dumps(self.data))
+        process = subprocess.Popen(
+            [sys.executable, str(ROOT / "scripts/nas-maintenance.py"), "down",
+             "--state", str(self.state)],
+            env={**os.environ, "PATH": str(self.path) + os.pathsep + os.environ["PATH"],
+                 "CLUSTER": str(self.cluster), "CALLS": str(self.log),
+                 "BLOCK_ON": "config current-context"},
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,
+        )
+        try:
+            readable, _, _ = select.select([process.stderr], [], [], 2)
+            self.assertTrue(readable, "No progress appeared while kubectl was waiting")
+            self.assertIn("checking Kubernetes context and saved state", process.stderr.readline())
+            self.assertIsNone(process.poll())
+        finally:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.communicate(timeout=10)
+
+    def test_cancellation_exception_is_limited_to_current_generation_kustomizations(self):
+        for kind, observed in (("helmreleases.helm.toolkit.fluxcd.io", 2),
+                               ("kustomizations.kustomize.toolkit.fluxcd.io", 1),
+                               ("kustomizations.kustomize.toolkit.fluxcd.io", None)):
+            with self.subTest(kind=kind, reconciling_generation=observed):
+                for objects in self.data.values():
+                    for obj in objects:
+                        obj.pop("status", None)
+                obj = self.data[kind][0]
+                obj["metadata"]["generation"] = 2
+                obj["status"] = {"conditions": [
+                    {"type": "Reconciling", "status": "True", "observedGeneration": observed},
+                    {"type": "Ready", "status": "False", "observedGeneration": 2,
+                     "reason": "HealthCheckCanceled"},
+                ]}
+                result = self.run_cli("down")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(any(a[0] == "scale" for a in self.calls()))
 
 
 if __name__ == "__main__":
