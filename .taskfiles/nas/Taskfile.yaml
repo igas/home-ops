@@ -1,0 +1,27 @@
+---
+version: '3'
+
+vars:
+  STATE: '{{.ROOT_DIR}}/.private/nas-maintenance.json'
+  DURATION: '{{.DURATION | default "2h"}}'
+  TIMEOUT: '{{.TIMEOUT | default "600"}}'
+
+env:
+  NAS_STATE: '{{.STATE}}'
+  NAS_DURATION: '{{.DURATION}}'
+  NAS_TIMEOUT: '{{.TIMEOUT}}'
+
+tasks:
+  down:
+    desc: Stop NAS consumers and backups, suspend Flux, and silence related alerts [DURATION=2h TIMEOUT=600]
+    cmd: python3 "{{.SCRIPTS_DIR}}/nas-maintenance.py" down --state "$NAS_STATE" --duration "$NAS_DURATION" --timeout "$NAS_TIMEOUT"
+    preconditions:
+      - test -f {{.KUBECONFIG}}
+      - which kubectl python3
+
+  up:
+    desc: Restore saved NAS consumer and Flux state after NAS storage and S3 are healthy [TIMEOUT=600]
+    cmd: python3 "{{.SCRIPTS_DIR}}/nas-maintenance.py" up --state "$NAS_STATE" --timeout "$NAS_TIMEOUT"
+    preconditions:
+      - test -f {{.KUBECONFIG}}
+      - which kubectl python3

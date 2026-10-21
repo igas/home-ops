@@ -19,6 +19,7 @@ env:
 
 includes:
   bootstrap: .taskfiles/bootstrap
+  nas: .taskfiles/nas
   talos: .taskfiles/talos
   template: .taskfiles/template
 

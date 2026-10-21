@@ -269,6 +269,12 @@ task talos:reset
 
 ## 🛠️ Talos and Kubernetes Maintenance
 
+### NAS updates
+
+Run `task nas:down` before NAS maintenance, then `task nas:up` after NFS and S3
+are healthy. See the [NAS maintenance runbook](docs/runbooks/nas-maintenance.md)
+for scope, temporary alert silences and failure recovery.
+
 ### ⚙️ Updating Talos node configuration
 
 > [!TIP]
