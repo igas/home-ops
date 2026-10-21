@@ -91,8 +91,11 @@ if ! health_ok; then
 fi
 
 # Read both inventories explicitly so an API/RBAC failure cannot look like no primaries.
-CLUSTERS="$(kubectl get clusters.postgresql.cnpg.io --all-namespaces -o json)"
-PODS="$(kubectl get pods --all-namespaces -l cnpg.io/podRole=instance -o json)"
+discover_cnpg() {
+  CLUSTERS="$(kubectl get clusters.postgresql.cnpg.io --all-namespaces -o json)"
+  PODS="$(kubectl get pods --all-namespaces -l cnpg.io/podRole=instance -o json)"
+}
+discover_cnpg
 
 cnpg_healthy() {
   kubectl get cluster.postgresql.cnpg.io "$1" --namespace "$2" -o json |
@@ -152,6 +155,19 @@ log "created silences ${SILENCES[*]} for $DURATION"
 ceph osd set noout
 NOOUT_SET=true
 log "set noout"
+
+# A different cluster may have failed over while we waited for a switchover.
+# Abort rather than reboot using stale primary placement. Retry after inspection.
+discover_cnpg
+if ! jq -e --arg node "$NODE" --argjson pods "$PODS" '
+  all(.items[]; . as $cluster |
+    [$pods.items[] | select(.metadata.namespace == $cluster.metadata.namespace
+      and .metadata.name == $cluster.status.currentPrimary) | .spec.nodeName] as $nodes |
+    ($nodes | length) == 1 and ($nodes[0] // "") != "" and $nodes[0] != $node)
+  ' <<< "$CLUSTERS" >/dev/null; then
+  log "CNPG primary placement changed or is unknown; refusing reboot. Inspect clusters before retrying."
+  exit 1
+fi
 
 log "rebooting $NODE"
 talosctl --nodes "$IP" reboot --wait --timeout "${TIMEOUT}s"

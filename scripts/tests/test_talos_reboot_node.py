@@ -31,38 +31,43 @@ class TalosRebootNode(unittest.TestCase):
             cli.write_text('''#!/usr/bin/env python3
 import json, os, sys
 from pathlib import Path
-a = sys.argv[1:]
+args = sys.argv[1:]
 with open(os.environ["CALLS"], "a") as f:
-    f.write(json.dumps([Path(sys.argv[0]).name, *a]) + "\\n")
-if os.environ.get("FAIL_ON") and os.environ["FAIL_ON"] in " ".join(a): sys.exit(1)
+    f.write(json.dumps([Path(sys.argv[0]).name, *args]) + "\\n")
+if os.environ.get("FAIL_ON") and os.environ["FAIL_ON"] in " ".join(args): sys.exit(1)
 if Path(sys.argv[0]).name == "talosctl": sys.exit()
 path = Path(os.environ["CLUSTER"])
 data = json.loads(path.read_text())
-if a[:2] == ["cnpg", "promote"]:
+if args[:2] == ["cnpg", "promote"]:
     if not os.environ.get("STUCK"):
         for c in data["clusters.postgresql.cnpg.io"]:
-            if c["metadata"]["name"] == a[2]:
-                c["status"]["currentPrimary"] = a[3]
-                c["status"]["targetPrimary"] = a[3]
+            if c["metadata"]["name"] == args[2]:
+                c["status"]["currentPrimary"] = args[3]
+                c["status"]["targetPrimary"] = args[3]
                 if os.environ.get("UNHEALTHY"): c["status"]["phase"] = "Switchover in progress"
         path.write_text(json.dumps(data))
     sys.exit()
-if a[:2] == ["cnpg", "version"]: print("1.30.1"); sys.exit()
-if a[0] == "get":
-    if a[1] == "node": print("True"); sys.exit()
-    if a[1] in data: print(json.dumps({"items": data[a[1]]})); sys.exit()
-    if a[1] == "cluster.postgresql.cnpg.io":
+if args[:2] == ["cnpg", "version"]: print("1.30.1"); sys.exit()
+if args[0] == "get":
+    if args[1] == "clusters.postgresql.cnpg.io" and os.environ.get("PRIMARY_RETURNS"):
+        marker = path.with_suffix(".seen")
+        if marker.exists():
+            data["clusters.postgresql.cnpg.io"][0]["status"]["currentPrimary"] = "pg-1"
+        marker.touch()
+    if args[1] == "node": print("True"); sys.exit()
+    if args[1] in data: print(json.dumps({"items": data[args[1]]})); sys.exit()
+    if args[1] == "cluster.postgresql.cnpg.io":
         print(json.dumps(next(c for c in data["clusters.postgresql.cnpg.io"]
-                              if c["metadata"]["name"] == a[2]))); sys.exit()
-if "ceph" in a:
-    if "health" in a: print('{"status":"HEALTH_OK"}')
-    elif "osd" in a and "stat" in a: print('{"num_up_osds":3,"num_in_osds":3,"num_osds":3}')
-    elif "pg" in a: print('{"pg_summary":{"num_pg_by_state":[{"name":"active+clean"}]}}')
+                              if c["metadata"]["name"] == args[2]))); sys.exit()
+if "ceph" in args:
+    if "health" in args: print('{"status":"HEALTH_OK"}')
+    elif "osd" in args and "stat" in args: print('{"num_up_osds":3,"num_in_osds":3,"num_osds":3}')
+    elif "pg" in args: print('{"pg_summary":{"num_pg_by_state":[{"name":"active+clean"}]}}')
     sys.exit()
-if "amtool" in a:
-    if "add" in a: print("silence-1")
+if "amtool" in args:
+    if "add" in args: print("silence-1")
     sys.exit()
-sys.exit("unexpected command: " + repr(a))
+sys.exit("unexpected command: " + repr(args))
 ''')
             cli.chmod(0o755)
 
@@ -142,6 +147,11 @@ sys.exit("unexpected command: " + repr(a))
         result, calls = self.run_cli()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(any(c[0] == "talosctl" for c in calls))
+
+    def test_primary_moving_back_after_switchover_blocks_reboot(self):
+        result, calls = self.run_cli(PRIMARY_RETURNS="1")
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(any(c[0] == "talosctl" for c in calls), calls)
 
 
 if __name__ == "__main__":

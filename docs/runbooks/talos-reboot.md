@@ -22,6 +22,11 @@ both name the selected replica and its phase is `Cluster in healthy state`.
 It then creates Alertmanager silences, sets Ceph `noout`, and reboots. After the
 node and Ceph recover, it removes `noout` and expires the silences.
 
+Immediately before reboot, it refreshes primary placement. If any primary has
+moved onto the target node or cannot be located, it aborts. Inspect the clusters
+before retrying. This check cannot prevent a concurrent promotion after the read,
+so do not run other database maintenance during the reboot.
+
 The task aborts before reboot if discovery or promotion fails, no eligible replica
 exists, or the cluster does not recover within the script's timeout, 1800 seconds
 by default. `FORCE=true` only bypasses the Ceph health precheck. It does not bypass
