@@ -61,6 +61,15 @@
       ignoreTests: true,
     },
     {
+      description: "CNPG plugin releases share the operator's repository; review version alignment with the Helm chart",
+      matchManagers: ["mise"],
+      matchPackageNames: ["cloudnative-pg/cloudnative-pg/kubectl-cnpg"],
+      overridePackageName: "cloudnative-pg/cloudnative-pg",
+      overrideDatasource: "github-releases",
+      automerge: false,
+      prBodyNotes: ["Keep the plugin aligned with the CloudNativePG operator supplied by the Helm chart. See docs/runbooks/talos-reboot.md. Do not allow more than one minor version of drift."],
+    },
+    {
       description: "Auto-merge Tuppr chart updates",
       matchDatasources: ["docker"],
       matchPackageNames: ["ghcr.io/home-operations/charts/tuppr"],

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Reboot one Talos node without paging on the Ceph and node alerts it causes.
 #
-# Before the reboot: refuse unless Ceph is HEALTH_OK (muted checks excluded),
+# Before the reboot: move CNPG primaries to healthy replicas on other nodes,
+# wait for each cluster to be healthy, refuse unless Ceph is HEALTH_OK (muted checks excluded),
 # set the Ceph noout flag so the node's OSDs are not marked out and rebalanced,
 # and create Alertmanager silences for every Ceph* alert plus alerts labelled
 # with this node's name or IP. After the reboot: wait for the node to be Ready,
@@ -88,6 +89,37 @@ if ! health_ok; then
     exit 1
   fi
 fi
+
+# Read both inventories explicitly so an API/RBAC failure cannot look like no primaries.
+CLUSTERS="$(kubectl get clusters.postgresql.cnpg.io --all-namespaces -o json)"
+PODS="$(kubectl get pods --all-namespaces -l cnpg.io/podRole=instance -o json)"
+
+cnpg_healthy() {
+  kubectl get cluster.postgresql.cnpg.io "$1" --namespace "$2" -o json |
+    jq -e --arg primary "$3" '
+      .status.currentPrimary == $primary and .status.targetPrimary == $primary
+      and .status.phase == "Cluster in healthy state"' >/dev/null
+}
+
+while IFS=$'\t' read -r namespace cluster primary; do
+  primary_node="$(jq -r --arg ns "$namespace" --arg primary "$primary" '
+    .items[] | select(.metadata.namespace == $ns and .metadata.name == $primary)
+    | .spec.nodeName' <<< "$PODS")"
+  [[ -n "$primary_node" ]] || { log "cannot locate primary for $namespace/$cluster; refusing reboot"; exit 1; }
+  [[ "$primary_node" == "$NODE" ]] || continue
+  replica="$(jq -r --arg ns "$namespace" --arg cluster "$cluster" --arg node "$NODE" '
+    [.items[] | select(.metadata.namespace == $ns and .metadata.labels["cnpg.io/cluster"] == $cluster)
+      | select(.spec.nodeName != $node and (.spec.nodeName // "") != "")
+      | select(.metadata.deletionTimestamp == null and .status.phase == "Running")
+      | select(.metadata.labels["cnpg.io/instanceRole"] == "replica")
+      | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))
+      | .metadata.name] | sort | .[0] // empty' <<< "$PODS")"
+  [[ -n "$replica" ]] || { log "no Ready replica on another node for $namespace/$cluster; refusing reboot"; exit 1; }
+  kubectl cnpg version >/dev/null
+  log "switching $namespace/$cluster primary from $primary to $replica"
+  kubectl cnpg promote "$cluster" "$replica" --namespace "$namespace"
+  wait_for "$namespace/$cluster primary $replica and Cluster in healthy state" cnpg_healthy "$cluster" "$namespace" "$replica"
+done < <(jq -r '.items[] | [.metadata.namespace, .metadata.name, (.status.currentPrimary // "")] | @tsv' <<< "$CLUSTERS")
 
 SILENCES=()
 NOOUT_SET=false

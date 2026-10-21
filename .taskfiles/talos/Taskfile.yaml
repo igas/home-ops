@@ -62,7 +62,7 @@ tasks:
       - which kubectl talhelper talosctl yq
 
   reboot-node:
-    desc: Reboot a node with Ceph noout set and its alerts silenced [IP=required DURATION=30m FORCE=false]
+    desc: Reboot a node after CNPG switchover, with Ceph noout and alerts silenced [IP=required DURATION=30m FORCE=false]
     cmd: >-
       {{.SCRIPTS_DIR}}/talos-reboot-node.sh --ip {{.IP}} --duration {{.DURATION}}
       {{- if eq .FORCE "true" }} --force{{ end }}

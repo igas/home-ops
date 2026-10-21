@@ -33,6 +33,8 @@ jobs:
             scripts/talos-render-check.sh
             scripts/talos-api-check.py
             scripts/tests/test_talos_api_check.py
+            scripts/talos-reboot-node.sh
+            scripts/tests/test_talos_reboot_node.py
             .github/workflows/talos.yaml
 
   render:
@@ -66,6 +68,9 @@ jobs:
 
       - name: Test API check failure handling
         run: python3 -m unittest discover -s scripts/tests -p test_talos_api_check.py -v
+
+      - name: Test planned reboot safety
+        run: python3 -m unittest discover -s scripts/tests -p test_talos_reboot_node.py -v
 
       - name: Summary
         if: ${{ always() && steps.render.outcome != 'skipped' }}
