@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import socket
 import subprocess
 import sys
@@ -12,6 +13,30 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+@unittest.skipUnless(shutil.which("task"), "Task runner required")
+class LoadBalancerTask(unittest.TestCase):
+    def test_checkout_path_with_spaces(self):
+        with tempfile.TemporaryDirectory(prefix="lb check ") as directory:
+            root = Path(directory)
+            shutil.copy(ROOT / "Taskfile.yaml", root)
+            shutil.copytree(ROOT / ".taskfiles", root / ".taskfiles")
+            (root / "kubeconfig").touch()
+            (root / "scripts").mkdir()
+            (root / "scripts/lb-check.py").write_text("print('LAN probe started')\n")
+            (root / "bin").mkdir()
+            for name in ("kubectl", "dig", "curl"):
+                binary = root / "bin" / name
+                binary.write_text("#!/bin/sh\nexit 0\n")
+                binary.chmod(0o755)
+            result = subprocess.run(
+                ["task", "--dir", str(root), "check-lb"],
+                env={**os.environ, "PATH": str(root / "bin") + os.pathsep + os.environ["PATH"]},
+                capture_output=True, text=True, timeout=10,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("LAN probe started", result.stdout)
 
 
 class LoadBalancerCheck(unittest.TestCase):

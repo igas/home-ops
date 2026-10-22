@@ -29,9 +29,9 @@ tasks:
 
   check-lb:
     desc: Check every LoadBalancer IP and port from the LAN host, plus each node's BGP peers
-    cmd: python3 {{.SCRIPTS_DIR}}/lb-check.py
+    cmd: python3 "{{.SCRIPTS_DIR}}/lb-check.py"
     preconditions:
-      - test -f {{.KUBECONFIG}}
+      - test -f "{{.KUBECONFIG}}"
       - which python3 kubectl dig curl
 
   reconcile:
