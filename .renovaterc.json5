@@ -3,7 +3,7 @@
   extends: [
     "config:recommended",
     // Talos 1.14+ no longer publishes ghcr.io/siderolabs/installer; versions come from the Image Factory
-    "github>home-operations/renovate-presets//apps/talosFactory.json5#8.1.0",
+    "github>home-operations/renovate-presets//apps/talosFactory.json5#10.0.1",
     "docker:enableMajor",
     "helpers:pinGitHubActionDigests",
     ":automergeBranch",
