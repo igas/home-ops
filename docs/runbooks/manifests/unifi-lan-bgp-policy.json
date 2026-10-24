@@ -1,0 +1,51 @@
+{
+  "enabled": true,
+  "name": "Allow LAN to BGP LoadBalancers",
+  "description": "home-ops #821: permit asymmetric Cilium DSR traffic from the Default LAN to the BGP-only LoadBalancer pool before Block Invalid Traffic. IPv4 TCP/UDP only; no automatic reverse-zone policy.",
+  "action": {
+    "type": "ALLOW",
+    "allowReturnTraffic": false
+  },
+  "source": {
+    "zoneId": "5748580e-c3d2-4999-b61a-9312821e6f37",
+    "trafficFilter": {
+      "type": "IP_ADDRESS",
+      "ipAddressFilter": {
+        "type": "IP_ADDRESSES",
+        "matchOpposite": false,
+        "items": [
+          {
+            "type": "SUBNET",
+            "value": "192.168.0.0/20"
+          }
+        ]
+      }
+    }
+  },
+  "destination": {
+    "zoneId": "722f50a5-9764-491f-8416-e1748762e728",
+    "trafficFilter": {
+      "type": "IP_ADDRESS",
+      "ipAddressFilter": {
+        "type": "IP_ADDRESSES",
+        "matchOpposite": false,
+        "items": [
+          {
+            "type": "SUBNET",
+            "value": "192.168.100.0/24"
+          }
+        ]
+      }
+    }
+  },
+  "ipProtocolScope": {
+    "ipVersion": "IPV4",
+    "protocolFilter": {
+      "type": "PRESET",
+      "preset": {
+        "name": "TCP_UDP"
+      }
+    }
+  },
+  "loggingEnabled": false
+}

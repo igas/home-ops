@@ -10,9 +10,80 @@ Service moves in #820. Existing Service IPs and traffic policies do not change.
   found no overlap. Recheck if the network configuration changes.
 - Have a wired and a Wi-Fi host on the Default LAN `192.168.0.0/20`.
   A VPN host in `192.168.16.0/24` does not qualify.
+- Confirm the controller-managed UniFi policy below is enabled and ordered
+  before `Block Invalid Traffic`. Raw SSH-added iptables rules are not a
+  persistent substitute.
 - Run `task check-lb` on the wired host and save its complete output as the
   baseline. Existing failures are not a passing baseline, but must not increase
   during this expand step. Record every pre-existing failure explicitly.
+
+## UniFi policy for DSR
+
+The 2026-10-24 wired and Wi-Fi tests confirmed a gateway firewall failure.
+Clients sent the initial connection packet through the gateway, but the node
+replied directly to the client. The gateway kept the connection in
+`SYN_SENT [UNREPLIED]` and dropped the client's acknowledgement and HTTP data.
+Both hosts passed with a temporary scoped allow rule, then failed again when
+that rule was removed.
+
+The persistent fix is the UniFi Network policy `Allow LAN to BGP LoadBalancers`.
+Its request body is recorded in
+[`manifests/unifi-lan-bgp-policy.json`](manifests/unifi-lan-bgp-policy.json).
+This file records the desired configuration. Flux does not apply it.
+
+| Setting | Value |
+| --- | --- |
+| Site ID | `88f7af54-98f8-306a-a1c7-c9349722b1f6` |
+| Policy ID | `2cb78313-3ef4-42ca-bea9-9a150b516267` |
+| Source | Internal zone, IPv4 `192.168.0.0/20` |
+| Destination | External zone, IPv4 `192.168.100.0/24` |
+| Action | Allow TCP and UDP, all ports within that destination pool |
+| Connection states | All, including invalid |
+| Order | Before the built-in `Block Invalid Traffic` policy |
+| Automatic reverse-zone policy | Disabled |
+
+The destination uses the External zone because UniFi does not include the
+BGP-only pool in its local network-zone sets. This does not send the traffic
+to the Internet. The BGP route still forwards it to the serving node on `br0`.
+Do not create an on-link VLAN or DHCP network for this range to change its zone.
+
+The source CIDR excludes the IoT and VPN networks. IPv6, ICMP and other protocols
+are not covered. No Internet-facing inbound permission was added. The global
+invalid-packet drop remains enabled for other traffic. Matching all connection
+states is intentional. Restricting this allow policy to new or established
+connections would not fix the asymmetric DSR flow.
+
+The policy was created through the documented UniFi Network integration API,
+not by editing gateway firewall rules. The relevant endpoints, relative to
+`https://192.168.1.1/proxy/network/integration/v1`, are:
+
+- `GET /sites/{siteId}/firewall/policies/{policyId}` to inspect it.
+- `POST /sites/{siteId}/firewall/policies` with the recorded JSON to recreate it,
+  only after confirming no policy with this name exists.
+- `GET` or `PUT /sites/{siteId}/firewall/policies/ordering` with query parameters
+  `sourceFirewallZoneId` and `destinationFirewallZoneId` to inspect or set order.
+  The policy ID must be in `orderedFirewallPolicyIds.beforeSystemDefined`.
+  Preserve all existing policy IDs and their relative order.
+- `DELETE /sites/{siteId}/firewall/policies/{policyId}` to remove this policy only.
+
+The API key is in the `UNIFI_API_KEY` field of 1Password item
+`w7rd7gdnoemjaunneg4jyhglsm`. Never put the key in this repository or captured
+command output. If recreating the policy, record its new ID here and on #821.
+
+In the UniFi UI, inspect the Internal-to-External zone pair in the Policy Table.
+Verify the name, source and destination CIDRs, IPv4 TCP/UDP match and ordering.
+On the gateway, `iptables -t filter -S UBIOS_LAN_WAN_USER` must show the
+controller-generated TCP and UDP accepts before the invalid-state drop.
+Do not persist the diagnostic `lb821-test-*` rules from the earlier experiment.
+
+Both hosts passed the full stream under this controller-managed policy on
+2026-10-24. Each received 3,932,160 bytes with the expected checksum in about
+29.5 seconds. The server logged both real client IPs. This proves the tested
+TCP path, not every UDP application or access from a different source network.
+
+References:
+- [UniFi zone-based firewall configuration and ordering](https://help.ui.com/hc/en-us/articles/115003173168-Zone-Based-Firewalls-in-UniFi)
+- [UniFi Network create-firewall-policy API](https://developer.ui.com/network/v10.1.84/createfirewallpolicy)
 
 ## Apply the expand configuration
 
@@ -93,9 +164,10 @@ Compare the real Services' addresses and results with the baseline. Their IPs
 must not change, and there must be no new failures.
 
 If the connection or transfer fails, stop. Record the failure on #821 before
-any move ticket starts. Investigate the router's route and firewall state. If
-DSR's asymmetric return path is blocked, the choices are a gateway firewall
-rule or SNAT for affected Services. Neither change belongs in this canary step.
+any move ticket starts. Investigate the router's route, policy ordering and
+firewall state. The scoped UniFi policy above fixes the observed DSR failure
+with operator approval. Do not disable invalid filtering globally or switch
+Cilium to SNAT without a separate decision and a repeat of both LAN tests.
 
 ## Cleanup and rollback
 
@@ -117,8 +189,15 @@ To roll back the expand step:
    the `bgp` pool. No existing Service annotation needs changing in this ticket.
 3. For a pre-merge manual apply, restore the `pool` and `l2-policy` specs from
    the pre-change revision, then delete `ciliumloadbalancerippool/bgp`.
-4. Rerun `task check-lb` from the same LAN host. Compare against the saved
+4. Remove only `Allow LAN to BGP LoadBalancers` through the UniFi Policy Table or
+   its policy-specific API DELETE endpoint. Do this only after no real Service
+   uses the new range. Removing it while Services use the pool restores the
+   observed LAN connection failure. Do not remove the built-in invalid drop.
+5. Rerun `task check-lb` from the same LAN host. Compare against the saved
    baseline, including its pre-existing failures.
+
+Normal canary cleanup does not remove the persistent UniFi policy. It must
+remain enabled for later Service moves that use this DSR network path.
 
 Do not close #821 or start a Service move while either host's test, advertisement
 inspection, cleanup, or the baseline comparison remains unverified.
