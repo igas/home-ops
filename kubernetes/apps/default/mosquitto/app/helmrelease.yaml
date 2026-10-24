@@ -45,11 +45,13 @@ spec:
     service:
       app:
         type: LoadBalancer
+        labels:
+          igas.dev/lb-pool: bgp
         annotations:
           external-dns.kubernetes.io/hostname: mosquitto.igas.dev
           gatus.home-operations.com/endpoint: |-
             group: services
-          lbipam.cilium.io/ips: 192.168.6.124
+          lbipam.cilium.io/ips: 192.168.100.124
         externalTrafficPolicy: Local
         ports:
           mqtt:
