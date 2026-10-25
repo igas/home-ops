@@ -57,7 +57,7 @@ to `Local`; the selector still targets only the `postgres-18` primary.
      -h 192.168.100.125 -p 5432 -U DATABASE_USER -d DATABASE_NAME \
      -v ON_ERROR_STOP=1 \
      -c 'SELECT current_database(), inet_client_addr(), inet_server_addr(), pg_is_in_recovery();'
-   dig @192.168.6.8 postgres.igas.dev A +short
+   dig @192.168.1.1 postgres.igas.dev A +short
    ```
 
    The query must succeed, report the real LAN client address and return
@@ -68,6 +68,25 @@ to `Local`; the selector still targets only the `postgres-18` primary.
 6. Record LAN results, query results, DNS, route/lease checks and operator
    client confirmation on #823. Leave acceptance checks pending until their
    evidence exists. No schema changes, database writes or restarts are needed.
+
+## Cutover record
+
+Flux applied `c381428` on 2026-10-25 without suspending reconciliation.
+Before and after cutover, the Wi-Fi LAN checker passed all seven Services
+and four BGP peers. CA-verified authenticated queries through both old and
+new IPs succeeded from `192.168.15.173`, reaching primary `10.42.2.243` with
+the real client IP preserved and recovery `false`. ClusterIP `10.43.43.80`
+and the primary endpoint were unchanged. Only `k8s-master-01`, the primary's
+node, advertised the new `/32`; no Postgres L2 lease remained.
+
+Router DNS at `192.168.1.1` returned `192.168.100.125`. This Mac's scoped
+resolver queries k8s-gateway, which returns NXDOMAIN for the name, as with
+the [API resolver issue](talos-control-plane-endpoint.md#kube-api-loadbalancer-migration).
+A hostname session with `PGHOSTADDR` set to the router-resolved address
+passed CA verification and authentication. This is not a claim that native
+macOS hostname resolution is fixed. No workstation DNS settings changed.
+The wired host lacks kubectl and psql; no wired full-check or database-session
+result is claimed for this migration. Ticket #823 holds the acceptance evidence.
 
 ## Rollback
 
