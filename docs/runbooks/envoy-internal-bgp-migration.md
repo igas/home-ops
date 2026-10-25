@@ -18,7 +18,7 @@ Ports 80/TCP, 443/TCP and 443/UDP remain unchanged.
   `gitea.igas.dev` and `grafana.igas.dev`. Flux MCP requires an API key;
   an unauthenticated 401 is expected, not proof that authenticated MCP works.
 - Keep `task flux-mcp` available to bypass the gateway during recovery.
-  No UniFi DNS forwarding change belongs to #827. For the coordinated DNS
+  No UniFi DNS forwarding change belongs to #827. For the DNS Service
   move in #828 and its deployment status, see
   [k8s-gateway-bgp-migration.md](k8s-gateway-bgp-migration.md).
 

@@ -129,7 +129,7 @@ commands below with `GODEBUG=netdns=go` on this workstation until its macOS
 resolver configuration is corrected. This workaround changes no system
 configuration and does not mean ordinary macOS resolution is fixed.
 
-For k8s-gateway's move to `192.168.100.8` and UniFi forwarding verification,
+For k8s-gateway's move to `192.168.100.8` and UniFi DNS dependency verification,
 see [k8s-gateway-bgp-migration.md](k8s-gateway-bgp-migration.md). Prefer the router
 as the normal LAN resolver so its API records remain available. Moving the
 gateway does not fix a client override that bypasses the router.
