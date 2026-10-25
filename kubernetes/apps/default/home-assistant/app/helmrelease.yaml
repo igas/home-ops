@@ -21,8 +21,6 @@ spec:
               tag: 2026.10.2@sha256:0d289f21951f9ecf0bf8888089c6d43f379611c47fe84f13d3302e83daa3c8fa
             env:
               TZ: Australia/Sydney
-              HASS_HTTP_TRUSTED_PROXY_1: 192.168.0.0/20
-              HASS_HTTP_TRUSTED_PROXY_2: 10.42.0.0/16
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
