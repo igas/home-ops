@@ -1,17 +1,4 @@
 ---
-apiVersion: cilium.io/v2alpha1
-kind: CiliumLoadBalancerIPPool
-metadata:
-  name: pool
-spec:
-  allowFirstLastIPs: "No"
-  blocks:
-    - cidr: "192.168.6.0/24"
-  # Unlabeled Services stay on the legacy pool during the migration.
-  serviceSelector:
-    matchExpressions:
-      - { key: igas.dev/lb-pool, operator: NotIn, values: [bgp] }
----
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
@@ -23,25 +10,6 @@ spec:
   serviceSelector:
     matchLabels:
       igas.dev/lb-pool: bgp
----
-apiVersion: cilium.io/v2alpha1
-kind: CiliumL2AnnouncementPolicy
-metadata:
-  name: l2-policy
-spec:
-  loadBalancerIPs: true
-  # Keep this selector identical to the legacy pool's selector. Moving a
-  # Service requires both its new IP annotation and igas.dev/lb-pool: bgp.
-  serviceSelector:
-    matchExpressions:
-      - { key: igas.dev/lb-pool, operator: NotIn, values: [bgp] }
-  # NOTE: interfaces might need to be set if you have more than one active NIC on your hosts
-  # interfaces:
-  #   - ^eno[0-9]+
-  #   - ^eth[0-9]+
-  nodeSelector:
-    matchLabels:
-      kubernetes.io/os: linux
 ---
 apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPAdvertisement
