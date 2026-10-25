@@ -32,6 +32,19 @@ spec:
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
+  name: envoy-external
+spec:
+  # Preserve the GatewayClass defaults without changing envoy-internal.
+  mergeType: StrategicMerge
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        externalTrafficPolicy: Local
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
   name: envoy-internal
 spec:
   # Preserve the GatewayClass defaults without changing envoy-external.
@@ -70,7 +83,13 @@ spec:
   infrastructure:
     annotations:
       external-dns.kubernetes.io/hostname: external.igas.dev
-      lbipam.cilium.io/ips: "192.168.6.6"
+      lbipam.cilium.io/ips: "192.168.100.6"
+    labels:
+      igas.dev/lb-pool: bgp
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: envoy-external
   listeners:
     - name: http
       protocol: HTTP

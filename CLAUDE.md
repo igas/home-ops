@@ -107,6 +107,7 @@ MakeJinja processes `.j2` files from `templates/` directory:
 - MQTT (Mosquitto): `192.168.100.124:1883`, BGP-only with `externalTrafficPolicy: Local`. Home Assistant and Zigbee2MQTT use `mosquitto.default.svc.cluster.local` and do not depend on this external IP. See `docs/runbooks/mosquitto-bgp-migration.md`.
 - Plex: `192.168.100.210:32400`, BGP-only with `externalTrafficPolicy: Local` to preserve LAN client IPs. For cutover, Plex settings, TV playback verification and rollback, see `docs/runbooks/plex-bgp-migration.md`.
 - Internal Gateway (Envoy): `192.168.100.7`, BGP-only with `externalTrafficPolicy: Local`. For DNS verification, LAN browser checks and rollback, see `docs/runbooks/envoy-internal-bgp-migration.md`.
+- External Gateway (Envoy): configured for `192.168.100.6`, BGP-only with `externalTrafficPolicy: Local`. Before deploying, confirm UniFi port forwards and manual DNS dependencies using `docs/runbooks/envoy-external-bgp-migration.md`; it also covers off-LAN verification and rollback. Cloudflare Tunnel uses Service DNS, not this IP.
 - Cluster DNS Gateway: `192.168.6.8`
 - Kube API LoadBalancer (Cilium): `192.168.6.9`
 - Control-plane endpoint: `https://k8s.igas.dev:6443` (three A records to the masters, not the LoadBalancer; see `docs/runbooks/talos-control-plane-endpoint.md`)
