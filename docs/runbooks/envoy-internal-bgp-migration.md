@@ -18,8 +18,9 @@ Ports 80/TCP, 443/TCP and 443/UDP remain unchanged.
   `gitea.igas.dev` and `grafana.igas.dev`. Flux MCP requires an API key;
   an unauthenticated 401 is expected, not proof that authenticated MCP works.
 - Keep `task flux-mcp` available to bypass the gateway during recovery.
-  No UniFi DNS forwarding change is needed here. k8s-gateway stays at
-  `192.168.6.8`; its own migration is a separate ticket.
+  No UniFi DNS forwarding change belongs to #827. For the coordinated DNS
+  move in #828 and its deployment status, see
+  [k8s-gateway-bgp-migration.md](k8s-gateway-bgp-migration.md).
 
 ## Cutover and verification
 
@@ -48,12 +49,13 @@ Ports 80/TCP, 443/TCP and 443/UDP remain unchanged.
 
    ```bash
    for host in flux-mcp.igas.dev gitea.igas.dev grafana.igas.dev; do
-     dig @192.168.6.8 "$host" A +noall +answer
+     dig @192.168.100.8 "$host" A +noall +answer
      dig "$host" A +noall +answer
    done
    ```
 
-   All three names must resolve to `192.168.100.7`. k8s-gateway watches
+   These commands use the post-#828 DNS address. Before that cutover, query
+   `192.168.6.8` instead. All three names must resolve to `192.168.100.7`. k8s-gateway watches
    HTTPRoutes and derives their address from the parent Gateway status, so
    no hard-coded DNS address changes here. If only the normal resolver is
    stale, wait for its cached TTL or flush that client's DNS cache and retry.

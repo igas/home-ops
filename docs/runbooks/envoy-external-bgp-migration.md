@@ -65,14 +65,16 @@ Repository preparation is not evidence of deployment or external reachability.
 
    ```bash
    for host in external.igas.dev echo.igas.dev ha.igas.dev ci.igas.dev; do
-     dig @192.168.6.8 "$host" A +noall +answer
+     dig @192.168.100.8 "$host" A +noall +answer
      dig "$host" A +noall +answer
    done
    ```
 
    The final LAN address must be `192.168.100.6`. Expire or flush stale cached
-   answers and retry. k8s-gateway stays at `192.168.6.8`; no UniFi DNS-forwarder
-   destination change belongs to this ticket. Check public DNS using an external
+   answers and retry. These commands use the post-#828 DNS address. Before that
+   cutover, query `192.168.6.8` instead. No UniFi DNS-forwarder destination change
+   belongs to #826; follow [k8s-gateway-bgp-migration.md](k8s-gateway-bgp-migration.md)
+   for that coordinated move and its deployment status. Check public DNS using an external
    resolver separately; it must still use the tunnel, not a private address.
 4. Run `task check-lb` from the same LAN host. envoy-external must pass TCP and
    HTTP/3 at its new IP. Every other Service's address, traffic policy and result

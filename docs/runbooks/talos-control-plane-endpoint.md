@@ -121,13 +121,18 @@ Resolve that client DNS failure before cutover; a direct router query or
 master-IP connection is not a substitute for the required endpoint check.
 
 The subsequent diagnosis found `/etc/resolver/igas.dev` on this Mac pointing
-at k8s-gateway `192.168.6.8`, which returns NXDOMAIN for the API name. The
+at k8s-gateway's then-current IP `192.168.6.8`, which returns NXDOMAIN for the API name. The
 router serves the correct three master records. For cutover testing,
 `GODEBUG=netdns=go kubectl --server=https://k8s.igas.dev:6443` successfully
 uses router DNS with normal TLS and authentication. Prefix the DNS-endpoint
 commands below with `GODEBUG=netdns=go` on this workstation until its macOS
 resolver configuration is corrected. This workaround changes no system
 configuration and does not mean ordinary macOS resolution is fixed.
+
+For k8s-gateway's move to `192.168.100.8` and UniFi forwarding verification,
+see [k8s-gateway-bgp-migration.md](k8s-gateway-bgp-migration.md). Prefer the router
+as the normal LAN resolver so its API records remain available. Moving the
+gateway does not fix a client override that bypasses the router.
 
 Pre-cutover UniFi API inspection found three enabled A records with TTL 60
 and no external-dns ownership TXT policy for this name. The operator reported
