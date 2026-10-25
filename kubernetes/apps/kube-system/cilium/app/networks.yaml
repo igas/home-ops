@@ -93,9 +93,11 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kube-api
+  labels:
+    igas.dev/lb-pool: bgp
   annotations:
-    external-dns.kubernetes.io/hostname: k8s.igas.dev
-    lbipam.cilium.io/ips: 192.168.6.9
+    # Keep control-plane DNS on the masters, independent of this optional LB.
+    lbipam.cilium.io/ips: 192.168.100.9
 spec:
   type: LoadBalancer
   externalTrafficPolicy: Local

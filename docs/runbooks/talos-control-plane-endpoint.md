@@ -55,8 +55,9 @@ next to it, and carrying the service account private key through
 answered authoritatively by the router at 192.168.1.1. The record is not managed
 by this repo.
 
-`192.168.6.9`, the `kube-api` LoadBalancer in
-`kubernetes/apps/kube-system/cilium/app/networks.yaml`, was rejected:
+The `kube-api` LoadBalancer in
+`kubernetes/apps/kube-system/cilium/app/networks.yaml`, then `192.168.6.9`,
+was rejected as the control-plane endpoint:
 
 - it depends on Cilium, its BGP session and LB-IPAM being up, which is a
   bootstrap circularity for the address nodes use to reach the API server;
@@ -64,6 +65,9 @@ by this repo.
   would need a SAN change and a certificate roll first;
 - `k8s.igas.dev` does not resolve to it today, so it buys nothing the name does
   not already give.
+
+The optional LB is now configured for `192.168.100.9` in the BGP-only pool.
+Its migration below does not change the endpoint or add an IP certificate SAN.
 
 The DNS name adds one dependency. `StaticEndpointController` resolves the
 endpoint hostname and returns an error if resolution fails, so node DNS
@@ -77,6 +81,100 @@ admin path.
 The public DNS fallback was removed after #860. See
 [Talos API DNS checks](talos-api-dns.md) for the failure evidence, live host
 checks, and the requirement that every upstream serve the LAN API records.
+
+## Kube-api LoadBalancer migration
+
+Cutover and rollback for [#825](https://github.com/igas/home-ops/issues/825).
+Only kube-api moves from `192.168.6.9` to `192.168.100.9`, retaining port
+6443 and `externalTrafficPolicy: Local`. This is preparation, not a record
+of a completed live cutover. No Talos apply or certificate rotation is needed.
+
+### Consumers and preflight
+
+- Talos uses `k8s.igas.dev`, whose LAN A records must stay at the three
+  masters `192.168.6.1`, `.2`, `.3`. Keep the issuer/audience pins unchanged.
+  Neither LB IP is an API certificate SAN; the DNS name is.
+- The agent's local kubeconfig uses master-01 directly. Confirm all other
+  operator kubeconfigs, scripts and off-repo clients before moving. No
+  tracked client configuration uses the old LB IP. If one is found, record
+  it on #825 and migrate it to the DNS endpoint before cutover.
+- The old Service hostname annotation is removed. UniFi external-dns watches
+  Services with `policy: sync`, and k8s-gateway watches Services too.
+  Cloudflare external-dns watches only HTTPRoutes and DNSEndpoints. Inspect
+  the UniFi A records and `k8s.main.k8s.igas.dev` ownership TXT record before
+  deploying. If external-dns owns the control-plane records, first arrange
+  independent ownership of the three master A records and verify that sync
+  leaves them intact. Removing the annotation must not delete those records.
+- CLAUDE.md and this runbook describe the new IP. Earlier migration runbooks
+  retain the old IP in historical baseline observations. The LAN checker
+  discovers the address from Service status; it needs no configuration edit.
+- Confirm #821 passed and retain both pools, legacy L2 and the persistent
+  UniFi policy in [lb-bgp-canary.md](lb-bgp-canary.md). Its source scope is
+  the Default LAN `192.168.0.0/20`, not IoT or VPN networks.
+
+The 2026-10-25 workstation baseline had all four BGP peers established and
+all six other Services passing. Kube-api refused `192.168.6.9:6443`.
+The master-IP kubeconfig returned `/readyz` = `ok`, and querying the router
+directly returned all three master A records. However, kubectl through the
+DNS name failed with `lookup k8s.igas.dev: no such host` on this workstation.
+Resolve that client DNS failure before cutover; a direct router query or
+master-IP connection is not a substitute for the required endpoint check.
+
+### Cutover and verification
+
+1. Record the consumer inventory and rollback on #825 before moving.
+   From a LAN host, save `task check-lb` output and verify:
+
+   ```sh
+   dig k8s.igas.dev A +noall +answer
+   kubectl --server=https://k8s.igas.dev:6443 --request-timeout=10s get --raw /readyz
+   ```
+
+   Require the three master A records and `ok`. Keep a second terminal
+   repeatedly running that kubectl command during reconciliation and after
+   the move. Record failures as well as successes; stop if the endpoint fails.
+2. Deploy through Flux's `kube-system/cilium` Kustomization. Confirm the
+   Service has `lbipam.cilium.io/ips: 192.168.100.9`, label
+   `igas.dev/lb-pool: bgp`, status IP `192.168.100.9`, `Local` policy and no
+   hostname annotation:
+
+   ```sh
+   kubectl -n kube-system get service kube-api -o yaml
+   kubectl -n kube-system get endpointslices -l kubernetes.io/service-name=kube-api -o yaml
+   ```
+
+   Follow [advertisement checks](lb-bgp-canary.md#check-advertisement-and-l2-exclusion)
+   for `192.168.100.9/32`. Require advertisements only from nodes with ready
+   API endpoints, established peers and no kube-api L2 lease after expiry.
+3. From the LAN, test authenticated HTTPS directly through the new LB,
+   retaining CA verification and using the existing DNS SAN:
+
+   ```sh
+   kubectl --server=https://192.168.100.9:6443 --tls-server-name=k8s.igas.dev --request-timeout=10s get --raw /readyz
+   ```
+
+   Require `ok`, not just a TCP handshake. Do not use insecure TLS or assume
+   the new IP is a certificate SAN. Repeat from wired and Wi-Fi if available.
+4. Run `task check-lb` from the same LAN host. Require kube-api green at its
+   new IP and all other Service addresses/results unchanged. Recheck normal
+   resolver answers and kubectl through `k8s.igas.dev` after at least two
+   external-dns sync intervals, each currently one minute. Record all evidence
+   on #825. Leave the ticket open until the live checks pass.
+
+### Rollback
+
+1. Restore only kube-api's IP annotation to `192.168.6.9` and remove its
+   `igas.dev/lb-pool` label together, then reconcile Cilium through Flux.
+   Retain `Local`, both pools, the shared BGP/L2 configuration and UniFi policy.
+   Keep the hostname annotation absent so DNS stays independent of the LB.
+   A full commit revert would restore that annotation; review DNS ownership
+   before choosing that instead of this targeted rollback.
+2. Confirm the old status IP, withdrawal of `192.168.100.9/32`, and restored
+   eligibility for the legacy L2 policy. Check the three master A records and
+   authenticated `/readyz` through `k8s.igas.dev` again.
+3. Repeat the LAN checker and compare every other Service with baseline.
+   The old kube-api refusal can return because legacy L2 and `Local` are
+   incompatible. Record that failure rather than reporting the old LB healthy.
 
 ## Phase 1: move the endpoint, pin the issuer (applied 2026-09-13, #736)
 

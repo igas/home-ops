@@ -109,7 +109,7 @@ MakeJinja processes `.j2` files from `templates/` directory:
 - Internal Gateway (Envoy): `192.168.100.7`, BGP-only with `externalTrafficPolicy: Local`. For DNS verification, LAN browser checks and rollback, see `docs/runbooks/envoy-internal-bgp-migration.md`.
 - External Gateway (Envoy): configured for `192.168.100.6`, BGP-only with `externalTrafficPolicy: Local`. Before deploying, confirm UniFi port forwards and manual DNS dependencies using `docs/runbooks/envoy-external-bgp-migration.md`; it also covers off-LAN verification and rollback. Cloudflare Tunnel uses Service DNS, not this IP.
 - Cluster DNS Gateway: `192.168.6.8`
-- Kube API LoadBalancer (Cilium): `192.168.6.9`
+- Kube API LoadBalancer (Cilium): configured for `192.168.100.9`, BGP-only with `externalTrafficPolicy: Local`. Before cutover, verify independent DNS ownership and API access through `k8s.igas.dev`; for TLS verification and rollback, see `docs/runbooks/talos-control-plane-endpoint.md#kube-api-loadbalancer-migration`.
 - Control-plane endpoint: `https://k8s.igas.dev:6443` (three A records to the masters, not the LoadBalancer; see `docs/runbooks/talos-control-plane-endpoint.md`)
 
 ## Agent skills
