@@ -86,8 +86,8 @@ checks, and the requirement that every upstream serve the LAN API records.
 
 Cutover and rollback for [#825](https://github.com/igas/home-ops/issues/825).
 Only kube-api moves from `192.168.6.9` to `192.168.100.9`, retaining port
-6443 and `externalTrafficPolicy: Local`. This is preparation, not a record
-of a completed live cutover. No Talos apply or certificate rotation is needed.
+6443 and `externalTrafficPolicy: Local`. Deployed through Flux on 2026-10-25
+in `f612ed5`. No Talos apply or certificate rotation is needed.
 
 ### Consumers and preflight
 
@@ -120,6 +120,24 @@ DNS name failed with `lookup k8s.igas.dev: no such host` on this workstation.
 Resolve that client DNS failure before cutover; a direct router query or
 master-IP connection is not a substitute for the required endpoint check.
 
+The subsequent diagnosis found `/etc/resolver/igas.dev` on this Mac pointing
+at k8s-gateway `192.168.6.8`, which returns NXDOMAIN for the API name. The
+router serves the correct three master records. For cutover testing,
+`GODEBUG=netdns=go kubectl --server=https://k8s.igas.dev:6443` successfully
+uses router DNS with normal TLS and authentication. Prefix the DNS-endpoint
+commands below with `GODEBUG=netdns=go` on this workstation until its macOS
+resolver configuration is corrected. This workaround changes no system
+configuration and does not mean ordinary macOS resolution is fixed.
+
+Pre-cutover UniFi API inspection found three enabled A records with TTL 60
+and no external-dns ownership TXT policy for this name. The operator reported
+no known external clients using the old LB IP. The post-cutover LAN check
+passed for all seven Services and all four BGP peers. Authenticated HTTPS
+through the new LB returned `/readyz` = `ok` using the existing DNS SAN.
+Only the three masters advertised the new /32. Cilium released the old L2
+lease and removed kube-api from every agent's L2 announcement table. See
+#825 for the final continuity-monitor and DNS sync evidence.
+
 ### Cutover and verification
 
 1. Record the consumer inventory and rollback on #825 before moving.
@@ -145,7 +163,11 @@ master-IP connection is not a substitute for the required endpoint check.
 
    Follow [advertisement checks](lb-bgp-canary.md#check-advertisement-and-l2-exclusion)
    for `192.168.100.9/32`. Require advertisements only from nodes with ready
-   API endpoints, established peers and no kube-api L2 lease after expiry.
+   API endpoints, established peers and no active kube-api L2 lease after
+   expiry. A released lease object may remain with empty `holderIdentity`.
+   In that case, confirm its renewal time stays unchanged and
+   `cilium-dbg shell -- db/show l2-announce` on every agent contains neither
+   the old nor new kube-api IP.
 3. From the LAN, test authenticated HTTPS directly through the new LB,
    retaining CA verification and using the existing DNS SAN:
 
