@@ -6,6 +6,22 @@ Only k8s-gateway moves, from `192.168.6.8` to `192.168.100.8`, retaining UDP/53.
 Its Service becomes BGP-only with `externalTrafficPolicy: Local`.
 Repository preparation does not confirm deployment. UniFi DNS records stay unchanged.
 
+## Verified cutover
+
+Deployed on 2026-10-25 through Flux at revision `c2d9430` after operator
+approval. The Service has `192.168.100.8`, the BGP label and `Local` policy.
+Its ready endpoint is on `k8s-worker-02`, the only node advertising the new
+`/32`; no node advertises the old `/32` and no gateway L2 lease remains.
+
+The same LAN Mac passed all four BGP peer checks and all seven Service probes
+before and after the move. DNS passed at the new IP; all six other Service
+addresses, policies and ports were unchanged. Direct gateway, router and normal
+system resolver queries returned `192.168.100.7` for Flux MCP, Gitea and Grafana.
+Normal-resolver HTTPS requests returned 401 for Flux MCP and 200 for Gitea and
+Grafana. The API hostname still resolves to the three masters. All 59 UniFi DNS
+policies matched the pre-cutover snapshot exactly. These were CLI checks from
+one LAN host, not manual browser or independent wired and Wi-Fi checks.
+
 ## DNS dependency discovery
 
 The original ticket assumed UniFi forwarded `igas.dev` to k8s-gateway.
