@@ -26,6 +26,62 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
 
+  # Direct LoadBalancer IP checks complement the sidecar's hostname checks.
+  # Gatus runs in-cluster; task check-lb remains the LAN routing check.
+  # The services group uses the existing GatusEndpointDown alert (for: 5m).
+  - name: envoy-external-lb
+    group: services
+    url: tcp://192.168.100.6:443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: envoy-internal-lb
+    group: services
+    url: tcp://192.168.100.7:443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: k8s-gateway-lb
+    group: services
+    url: 192.168.100.8:53
+    interval: 1m
+    dns:
+      query-name: plex.igas.dev
+      query-type: A
+    conditions:
+      - "[DNS_RCODE] == NOERROR"
+      - "[BODY] == 192.168.100.6"
+
+  - name: kube-api-lb
+    group: services
+    url: tcp://192.168.100.9:6443
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: mosquitto-lb
+    group: services
+    url: tcp://192.168.100.124:1883
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: postgres-lb
+    group: services
+    url: tcp://192.168.100.125:5432
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: plex-lb
+    group: services
+    url: tcp://192.168.100.210:32400
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
 metrics: true
 
 storage:
