@@ -21,7 +21,7 @@ spec:
               tag: 1.43.4.10903@sha256:fdc6fe82bc7d8acd08fc0aa581fcb76722803ba5905e2537135a697347dd6149
             env:
               TZ: Australia/Sydney
-              PLEX_ADVERTISE_URL: https://plex.igas.dev:443,http://192.168.6.210:32400,http://plex.default.svc.cluster.local:32400
+              PLEX_ADVERTISE_URL: https://plex.igas.dev:443,http://192.168.100.210:32400,http://plex.default.svc.cluster.local:32400
               PLEX_NO_AUTH_NETWORKS: 192.168.0.0/20
             probes:
               # Liveness restarts the container, so it is tuned to only fire on a
@@ -92,11 +92,11 @@ spec:
     service:
       app:
         type: LoadBalancer
+        labels:
+          igas.dev/lb-pool: bgp
         annotations:
-          lbipam.cilium.io/ips: 192.168.6.210
-        # Cilium L2 announcements ignore Local and may put the lease on a node
-        # without the pod; back to Local once BGP-only lands (#824).
-        externalTrafficPolicy: Cluster
+          lbipam.cilium.io/ips: 192.168.100.210
+        externalTrafficPolicy: Local
         ports:
           http:
             port: *port

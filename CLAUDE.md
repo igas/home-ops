@@ -105,6 +105,7 @@ MakeJinja processes `.j2` files from `templates/` directory:
 - Service CIDR: `10.43.0.0/16`
 - LoadBalancer migration: the legacy on-link pool still uses L2 announcements. Services labeled `igas.dev/lb-pool: bgp` use `192.168.100.0/24`, are excluded from L2, and route through UniFi to Cilium BGP `/32` advertisements. DSR requires the persistent UniFi policy in `docs/runbooks/lb-bgp-canary.md`, currently scoped to the Default LAN `192.168.0.0/20`.
 - MQTT (Mosquitto): `192.168.100.124:1883`, BGP-only with `externalTrafficPolicy: Local`. Home Assistant and Zigbee2MQTT use `mosquitto.default.svc.cluster.local` and do not depend on this external IP. See `docs/runbooks/mosquitto-bgp-migration.md`.
+- Plex: `192.168.100.210:32400`, BGP-only with `externalTrafficPolicy: Local` to preserve LAN client IPs. For cutover, Plex settings, TV playback verification and rollback, see `docs/runbooks/plex-bgp-migration.md`.
 - Internal Gateway (Envoy): `192.168.6.7`
 - Cluster DNS Gateway: `192.168.6.8`
 - Kube API LoadBalancer (Cilium): `192.168.6.9`
