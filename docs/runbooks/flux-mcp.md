@@ -4,7 +4,7 @@ The cluster runs the Flux MCP server (`flux-operator-mcp` in `flux-system`, adde
 
 ## How requests reach it
 
-- The chart's HTTPRoute attaches to the `https` listener of `envoy-internal` (`192.168.6.7`), so the name resolves only on the LAN and TLS comes from the wildcard certificate.
+- The chart's HTTPRoute attaches to the `https` listener of `envoy-internal` (`192.168.100.7`, BGP-only), so the name resolves only on the LAN and TLS comes from the wildcard certificate. For the gateway cutover, DNS checks and rollback, see [envoy-internal-bgp-migration.md](envoy-internal-bgp-migration.md).
 - The `flux-operator-mcp` SecurityPolicy enforces API-key auth on that route. Envoy reads the key from the `x-api-key` header and returns 401 when it is missing or wrong. It strips the header before forwarding.
 - The key lives in the 1Password item `flux-operator-mcp` (vault `Kubernetes`, field `FLUX_MCP_API_KEY`). The ExternalSecret copies it into the Secret `flux-operator-mcp-secret` under the client ID `claude-code`.
 - The chart's NetworkPolicy admits port 9090 only from `flux-system` and `network`, where the Envoy proxies run.

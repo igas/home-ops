@@ -29,6 +29,19 @@ spec:
         compression:
           type: Gzip
 ---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: envoy-internal
+spec:
+  # Preserve the GatewayClass defaults without changing envoy-external.
+  mergeType: StrategicMerge
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        externalTrafficPolicy: Local
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
@@ -92,7 +105,13 @@ spec:
   infrastructure:
     annotations:
       external-dns.kubernetes.io/hostname: internal.igas.dev
-      lbipam.cilium.io/ips: "192.168.6.7"
+      lbipam.cilium.io/ips: "192.168.100.7"
+    labels:
+      igas.dev/lb-pool: bgp
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: envoy-internal
   listeners:
     - name: http
       protocol: HTTP
