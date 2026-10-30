@@ -77,7 +77,7 @@ spec:
           browser:
             image:
               repository: ghcr.io/browserless/chromium
-              tag: v2.57.0@sha256:6bac628b3d8293f8fb251d3a6b63030dfc5a1cb0c7e5c39abe5efd8f4b25360b
+              tag: v2.58.1@sha256:f2950a079c3172339f1dfeac597b64ee0561e0843acb956ffec235b93bf77aff
             env:
               CONCURRENT: "4"
               TIMEOUT: "60000"
