@@ -27,6 +27,10 @@ kubectl -n database exec $(kubectl -n database get cluster postgres-18 -o jsonpa
 
 v4 → v5 (2026-10): migration 207 moves the quality-definition size limits into quality profiles and drops the old columns. For the follow-up, check the profile sizes, then check that the next recyclarr sync succeeds.
 
+A changed existing migration is not automatically a new migration. On #892, 5.0.0.2742 to 5.0.0.2870 changed migration 225 to batch MediaInfo conversion, but added no numbered migration. The running PostgreSQL database was already at 237. Read the version table before claiming that a migration edit runs again on upgrade.
+
+Re-review the migration inventory when Renovate advances the target. The later #892 head targets 5.0.0.2907 and **does** add migration 240, absent from its release-note bullets. It replaces the unique `Series.TitleSlug` index with a non-unique index. The live schema was still 237 on 2026-11-01. A pre-upgrade PostgreSQL dump is now needed even though the earlier 2870 verdict found no new migration. Do not assume an image rollback restores uniqueness after duplicate slugs can be inserted.
+
 ## Auth
 
 v5 removed Basic auth (#7651) and defaults to Forms with a generated `sonarr` user (#9013). Ours is `AuthenticationMethod=External` / `DisabledForLocalAddresses` in `config.xml`, and that is not pinned by env. `InitialUserService` only acts when the method is `Forms`, so External survives. If `config.xml` is ever regenerated, the default flips to Forms.

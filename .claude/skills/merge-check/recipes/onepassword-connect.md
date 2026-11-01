@@ -16,6 +16,8 @@ The `1password-connect` group rule in `.renovaterc.json5` opens one PR for both 
 - the official chart's `CHANGELOG.md`: `helm pull oci://ghcr.io/1password/connect --version <v> --untar`. Its `appVersion` maps a chart version to a Connect version.
 - maintainer replies on `1Password/connect` issues (1.8.3's only description is on #115)
 
+Connect 1.8.4 is documented by official chart 2.4.3's changelog and [connect-helm-charts#301](https://github.com/1Password/connect-helm-charts/pull/301) as a security-patch update. That chart's appVersion is 1.8.4. The public app release page still stops at 1.8.1. Both API and Sync keep `opuser`, their entrypoints, and environment across the reviewed immutable 1.8.3/1.8.4 amd64 configs; the Chainguard base digest changes. Read this sparse official note alongside image compatibility, not as a detailed binary changelog.
+
 ## Precedent
 
 onedr0p uses the official chart (`ghcr.io/1password/connect`), not the raw images. Find the chart version whose `appVersion` matches the target and search his merged PRs for that.

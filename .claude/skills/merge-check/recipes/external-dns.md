@@ -22,6 +22,8 @@ Read-only. Cloudflare honours `--dry-run`.
 
 The webhook does not honour dry-run. It sets no `--gateway-name`, so it reads every Gateway, and it also has the `service` source. Because it can't be dry-run, a source-side change in the app release notes earns a **Prep** line: read its logs for `DELETE` after rollout. Static analysis only: compare the annotation and label selectors the new version reads against the Gateways and HTTPRoutes in `kubernetes/apps/network/`.
 
+Webhook 0.10.13 adds `UNIFI_REQUEST_TIMEOUT`, default zero, so existing deployments keep the old unbounded per-attempt behavior. If enabling it separately, budget attempts plus retry backoff below ExternalDNS's read-plus-write timeout. The upstream example uses 4s for three attempts within the default 15s call budget. More than one page of records adds sequential request budgets.
+
 ## Settings that decide which release notes matter
 
 TXT registry (not `crd`), no `--txt-encrypt-enabled`, Cloudflare proxying through `--cloudflare-proxied` rather than `providerSpecific`. The one DNSEndpoint (`network/cloudflare-tunnel`) has no `providerSpecific`. Registry, encryption, and Cloudflare provider-specific changes therefore skip us; source changes (gateway, service, crd) do not.

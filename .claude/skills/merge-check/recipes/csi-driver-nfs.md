@@ -8,6 +8,8 @@ Read the GitHub release in kubernetes-csi/csi-driver-nfs. Each release lists che
 
 New controller flags often reach the chart with a `| default 0` template. Before calling a new arg a no-op, check the flag's own default in the PR diff. In 4.13.5 the `--max-snapshot-*` flags use `0` = unlimited.
 
+Version 4.13.6 makes `feature.fsGroupPolicy` configurable, defaulting to `File`, which was previously hard-coded. Compare the rendered and live `CSIDriver.spec.fsGroupPolicy` before treating that new key as a behavior change. On #876 both were `File`, and no NFS PV or `nfs-slow` PVC existed.
+
 ## Blast radius
 
 As of 2026-10-11 the `nfs-slow` StorageClass exists but nothing uses it: no PVs on `nfs.csi.k8s.io`, no PVCs on `nfs-slow`, and no NFS VolumeSnapshotClass. Re-check every review, because once something mounts NFS a node-plugin restart matters:

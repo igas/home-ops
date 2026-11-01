@@ -29,6 +29,8 @@ grep -rn '<function>' $(grep -rl 'kind: ExternalSecret' kubernetes)
 
 As of 2.12.0, no template uses `fail` (removed in 2.12.0), and none templates a `kubernetes.io/service-account-token` or bootstrap-token Secret (blocked in 2.12.0). After merge, `kubectl get externalsecrets -A -o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' | sort | uniq -c` should show only `True`.
 
+Version 2.13.0 extends validation to manifest Secret candidates and restricts v1beta1 `templateFrom.target` to Data, Annotations, or Labels. Check manifest targets and templateFrom entries, not just Secret types. On #858 the repo used v1 and autopulse's only templateFrom omitted the target, which keeps the supported Data default. Versions 2.13.0 and 2.14.0 do not fix the Connect PushSecret issue above.
+
 ## Bootstrap
 
 `bootstrap/helmfile.d/01-apps.yaml` installs this chart with `templates/values.yaml.gotmpl`, which reads the HelmRelease's own `spec.values`. A key that becomes required only needs adding to the HelmRelease, not to the helmfile.

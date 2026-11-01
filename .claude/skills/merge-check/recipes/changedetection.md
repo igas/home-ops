@@ -1,0 +1,9 @@
+# changedetection
+
+The application and Browserless share a pod. Review their image PRs separately and avoid combining rollouts; use [browserless.md](browserless.md) for browser rendering changes. The app stores watch state in `/datastore` and connects to the browser over localhost.
+
+Release 0.60.10 changes PDF fetching/checksums and retained originals, proxy credential handling, notification regex timeouts and Jinja validation. It also switches the image build to uv; do not infer a new runtime command from that build-tool change alone.
+
+Read target-version issue bodies before dismissing notification behavior. On #895, upstream #4619 remained open for Markdown-to-HTML notifications with multiple destinations. Reports #4607 and #4620 concerned paused-watch reporting and failure counters. A closed issue is not proof its fix shipped in the target tag, and an issue reported on another container packaging is not a reproduction here. Keep actual watch/notification settings unverified unless they were inspected.
+
+Inspect persisted settings without printing URLs or credentials. The running 0.60.9 installation keeps global settings in `/datastore/changedetection.json` and individual settings in `watch.json` below watch directories. Root-level version-named JSON files are backups, not the active watch inventory. A read-only JSON traversal can report notification-format counts, destination counts and ignore_status_codes booleans only. On the 2026-11-01 re-review, global format was htmlcolor, the single watch inherited the system format, no multi-destination configuration was found in those inspected files, and ignore_status_codes was not enabled. This excludes the reported combination for that snapshot, not for future watches. Sending a real notification or rechecking a watch is outside merge-check.

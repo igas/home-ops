@@ -19,4 +19,6 @@ A change of uid, or a dropped file capability, would need a preflight: a throwaw
 
 ## Precedent
 
+Chart 1.49.0 changes `serviceAccount.create` to true, fixing [coredns/helm#283](https://github.com/coredns/helm/issues/283). Our HelmRelease already sets it true. Compare the actual ServiceAccount and ClusterRoleBinding rather than assuming that the changed default moves this cluster's RBAC. The appVersion remains 1.14.7 across 1.48.2 to 1.49.0.
+
 onedr0p's Corefile is close to ours and he tracks CoreDNS closely, including holding it back for #8390 with a disabled Renovate rule. If his repo has a disabled CoreDNS package rule or a pinned image tag, find out why before merging.

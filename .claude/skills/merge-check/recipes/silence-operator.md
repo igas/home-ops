@@ -15,6 +15,8 @@ The chart renders the Silence CRD from `templates/crds.yml` (gated on `crds.inst
 
 All Silences in `kubernetes/apps/observability/silence-operator/silences/` set only `matchers`, with no `startsAt`, `endsAt`, `duration`, or `valid-until` annotation. They stay active only because the controller falls back to creationTimestamp + 100 years. From 0.21.0 that's step 4 of `calculateSilenceTimes`. A release that changes this fallback would quietly expire them, so check it on every bump.
 
+Release 0.21.1 changes binary architecture packaging and removes the pod-template `releaseRevision` annotation. That removal explains its non-image Flux diff. The controller implementation and templated CRD stayed unchanged on #871; confirm those facts rather than assuming every patch is image-only.
+
 ## Registry lag
 
 GitHub releases sometimes land before the chart and image reach gsoci (giantswarm/silence-operator#627, #731). If CI can't pull the chart, check the image with `docker manifest inspect gsoci.azurecr.io/giantswarm/silence-operator:<new>` before treating it as a real failure.
