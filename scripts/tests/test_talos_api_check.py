@@ -48,7 +48,7 @@ with open(os.environ["CALLS"], "a") as f:
 if tool == "talosctl":
     assert "kubeconfig" in args and "--merge=false" in args
     assert args[-1] == "-"
-    if os.environ.get("FETCH_FAILURE"):
+    if os.environ.get("FETCH_FAILURE") or (os.environ.get("FETCH_FIRST_FAILURE") and "192.168.6.1" in args):
         print("SECRET-KEY-MATERIAL", file=sys.stderr)
         sys.exit(1)
     print("fixture, not credentials")
@@ -121,7 +121,16 @@ elif tool == "kubectl":
         result, calls = self.run_cli(FETCH_FAILURE="1")
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn("SECRET-KEY-MATERIAL", result.stdout + result.stderr)
-        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(calls), 3)
+        self.assertTrue(all(c[0] == "talosctl" for c in calls))
+
+    def test_unavailable_first_master_does_not_block_healthy_control_plane(self):
+        result, calls = self.run_cli("--ip", "192.168.6.2", FETCH_FIRST_FAILURE="1", API_SUCCESS="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        fetches = [c for c in calls if c[0] == "talosctl"]
+        self.assertEqual([c[c.index("--nodes") + 1] for c in fetches], ["192.168.6.1", "192.168.6.2"])
+        self.assertIn("Workstation drain API checks passed", result.stdout)
+        self.assertNotIn("SECRET-KEY-MATERIAL", result.stdout + result.stderr)
 
     def test_unknown_node_is_rejected_before_fetching_credentials(self):
         result, calls = self.run_cli("--ip", "192.168.6.11")

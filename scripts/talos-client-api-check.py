@@ -27,16 +27,20 @@ def main():
     targets = [node for node in nodes if not args.ip or node["ipAddress"] == args.ip]
     if not targets:
         raise RuntimeError("No configured Talos node matches --ip")
-    control_plane = next(node for node in nodes if node.get("controlPlane"))
-
     # The drain client downloads this config via a control-plane Talos endpoint.
     # Never merge it with, or overwrite, the operator's kubeconfig.
-    result = subprocess.run([
-        "talosctl", "--nodes", control_plane["ipAddress"], "kubeconfig", "--merge=false", "-"
-    ], capture_output=True, timeout=30)
-    if result.returncode:
+    for control_plane in (node for node in nodes if node.get("controlPlane")):
+        try:
+            result = subprocess.run([
+                "talosctl", "--nodes", control_plane["ipAddress"], "kubeconfig", "--merge=false", "-"
+            ], capture_output=True, timeout=30)
+        except subprocess.TimeoutExpired:
+            continue
+        if result.returncode == 0:
+            break
+    else:
         # Do not echo credential-fetch output, even on errors.
-        raise RuntimeError("Could not fetch admin kubeconfig from Talos")
+        raise RuntimeError("Could not fetch admin kubeconfig from any Talos control plane")
     with tempfile.TemporaryDirectory(prefix="talos-client-api-") as directory:
         config = Path(directory) / "kubeconfig"
         config.touch(mode=0o600)

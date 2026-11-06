@@ -119,8 +119,9 @@ ResolverConfig for the LAN-only upstream list. It failed before the DNS patch
 and passed afterwards. CI already runs this script for Talos changes.
 
 `check-api` checks the workstation first, then all Talos hosts.
-`check-client-api` fetches a fresh admin kubeconfig through Talos, without merging
-it into the operator config. It requires the DNS endpoint and cluster CA with
+`check-client-api` fetches a fresh admin kubeconfig through Talos, trying another
+configured control-plane node if the first fetch fails. It does not merge the
+download into the operator config. It requires the DNS endpoint and cluster CA with
 TLS verification, then GETs the configured nodes from the workstation with
 `kubectl`'s Go/client-go client. No server, TLS-name, or DNS override is used.
 The admin config is held in a private temporary directory with a mode-0600
