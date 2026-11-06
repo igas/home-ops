@@ -235,3 +235,55 @@ maintenance, record the original scheduling state, run both checks, then use
 the normal Talos drain path and verify recovery. Restore the recorded state
 afterward, not an unconditional uncordon of a previously cordoned node. Leave
 #860 open until that maintenance evidence is recorded.
+
+## Official drain and reboot verification, 2026-11-06
+
+The operator approved the official drain-and-reboot option on master-03 rather
+than a drain-only helper. This was one coordinated reboot of the installed
+Talos v1.14.3 image, not an OS upgrade. It supersedes the pending drain
+verification above.
+
+Before maintenance, both API checks passed on all four nodes. All nodes were
+Ready and schedulable, etcd was healthy, and Ceph had 3/3 OSDs up/in and 33
+active+clean PGs. Master-03 hosted no Postgres instance. A fresh etcd snapshot
+and original scheduling, automation, Ceph flag and silence state were saved in
+the private local directory `.private/talos-drain-check-dkyqxvrs/`.
+
+Tuppr reconciliation was suspended and its deployment scaled from 2 to 0.
+The existing reboot maintenance script created three 45-minute Ceph/node
+silences and set `noout`. A one-run shell wrapper added the drain flags to its
+reboot invocation, without modifying the script or its normal defaults:
+
+```sh
+talosctl --nodes 192.168.6.3 reboot --wait --timeout 1800s \
+  --drain=true --drain-timeout=10m --progress=plain
+```
+
+The command completed successfully. Its log recorded `node cordoned`, pod
+evictions, `node drained`, the reboot post-check, and `node uncordoned`.
+No manual `kubectl drain`, forced deletion, PDB bypass, IP endpoint override,
+TLS bypass, installer invocation or firmware change was used. The original
+lookup failure did not recur.
+
+Master-03's boot ID changed from `6a953f4b-16f0-4066-98e4-046be8b71399` to
+`b311c2db-b6b2-4852-9169-43ae6a655f27`; its Talos version remained v1.14.3.
+The maintenance script ran from approximately 15:41 to 15:45 Australia/Sydney.
+Post-recovery verification confirmed:
+
+- Both API checks passed again on all four nodes, including host DNS returning
+  exactly the three intended master addresses.
+- All four nodes were Ready with their original `unschedulable=False` state.
+  All running workloads were Ready, with no Pending pods.
+- All three etcd members were healthy. Postgres retained primary
+  `postgres-18-2` with all three instances Ready.
+- Ceph returned to HEALTH_OK, 3/3 OSDs up/in and 33 active+clean PGs. Its global
+  flags matched the baseline exactly, with `noout` cleared.
+- Only the three maintenance silences were expired. The original active
+  silences were unchanged.
+- Tuppr was restored to 2/2 replicas. HelmRelease and Kustomization suspension
+  fields matched their original state, and both reconciled successfully.
+- `task check-lb` passed for all four BGP peers and all seven Services.
+
+Raw maintenance output, the snapshot and machine-readable verification remain
+local in the private directory, not in Git. The previously failing official
+CLI cordon/drain path is now verified. No further reboot is needed for #860.
