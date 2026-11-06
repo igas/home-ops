@@ -9,7 +9,15 @@ mise exec -- kubectl cnpg status postgres-18 -n database
 task talos:reboot-node IP=192.168.6.12
 ```
 
-The task checks Ceph health, then discovers CNPG clusters across all namespaces.
+The task first checks the workstation API path used by Talos's CLI drain, using
+a freshly fetched Talos admin kubeconfig rather than the operator kubeconfig.
+A DNS/TLS/auth failure stops before any maintenance side effects. See
+[Talos API DNS checks](talos-api-dns.md) for the separate host check and resolver
+troubleshooting. This preflight does not cordon or drain, and does not change
+the reboot command's existing drain setting. When drain is required, coordinate
+it as part of the maintenance window, not as a DNS test.
+
+The task then checks Ceph health and discovers CNPG clusters across all namespaces.
 For each primary on the target node, it selects a Running, Ready, non-terminating
 replica on another node and runs:
 
