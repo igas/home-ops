@@ -14,6 +14,16 @@ spec:
       prowlarr:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.6.0
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
+              - secretRef:
+                  name: "{{ .Release.Name }}-db-init-secret"
         containers:
           app:
             image:
