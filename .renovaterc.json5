@@ -216,7 +216,7 @@
     {
       description: "Auto-merge qBittorrent image patch updates",
       matchDatasources: ["docker"],
-      matchPackageNames: ["ghcr.io/home-operations/qbittorrent"],
+      matchPackageNames: ["ghcr.io/home-operations/qbittorrent-libtorrentv1"],
       automerge: true,
       automergeType: "branch",
       matchUpdateTypes: ["patch"],
