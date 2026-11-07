@@ -14,6 +14,6 @@ spec:
       containerdRegistryConfigPath: /etc/cri/conf.d/hosts
     service:
       registry:
-        hostPort: 29999
+        nodePort: 30020
     serviceMonitor:
       enabled: true
