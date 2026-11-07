@@ -22,6 +22,19 @@ gh api repos/autobrr/autobrr/compare/vOLD...vNEW --jq '.files[].filename' | grep
 
 Migrations run on startup and are forward-only. Rolling back the image after a migration means restoring the database from backup. Changes to `internal/config/config.go` are where new or renamed `AUTOBRR__*` env vars show up. Compare them to the `env:` block in the HelmRelease.
 
+For v1.89.0 → v1.90.0, the entire migrations and config trees and Dockerfile have identical Git tree/blob SHAs. The feed settings are additions to existing JSON, not new SQL migrations or required environment variables.
+
+## Feed and indexer changes in v1.90.0
+
+- [Pagination and processing order](https://github.com/autobrr/autobrr/blob/v1.90.0/internal/domain/feed.go) default to one page and oldest first, preserving existing settings. Pagination is opt-in, capped at ten pages. [The refresh implementation](https://github.com/autobrr/autobrr/blob/v1.90.0/internal/feed/refresh.go) limits a new or long-paused feed to its first page until a cache boundary exists. Check these defaults before treating a feed feature as an automatic backfill risk.
+- [BTN size parsing](https://github.com/autobrr/autobrr/pull/2757/files) also removes its API client and additional API size/uploader checks. The announcement now supplies size and uploader, and the indexer no longer requires an API key. Check actual BTN usage before assuming this is only a regex change.
+
+## Known list-provider limitations
+
+[Trakt #2812](https://github.com/autobrr/autobrr/issues/2812) reports imports stopping at 100 items on v1.90.0. Its [fix #2813](https://github.com/autobrr/autobrr/pull/2813) merged after the release for milestone v1.91.0. Closing the issue does not mean v1.90.0 contains the fix. The provider tree is identical in v1.89.0 and v1.90.0; the fix describes a Trakt API change dating to June 2026, not a regression introduced by this bump. Feed pagination and Trakt list pagination are separate code paths.
+
+[Metacritic #2788](https://github.com/autobrr/autobrr/issues/2788) describes the hosted API's deliberate upcoming-albums placeholder after a site change. It already affects v1.89.0; v1.90.0 does not fix it.
+
 ## Cluster-specific settings
 
 - `AUTOBRR__CHECK_FOR_UPDATES: false`. Update-available notifications (including the v1.88.0 built-in inbox) stay quiet.

@@ -50,6 +50,14 @@ The rollout itself is quick: about 6 minutes for all 8 daemons (mons, then mgrs,
 
 `status.cephx` keeps `keyCephVersion: 19.2.6-0` at generation 2 after the major, and that is correct, not a stalled upgrade: Rook only re-stamps `keyCephVersion` when it actually mints a new key, and generation 2 is already the desired generation, so nothing rotates. Expecting the field to follow the Ceph version is the trap (#733's acceptance criteria assumed it would). Read `keyGeneration` and `keyType` for the CVE posture; `keyCephVersion` records which build minted the key that is still in use.
 
+## Tentacle patch images
+
+For image-only bumps, inspect the exact registry artifact before carrying a packaging finding over from another Ceph series. In #919, both v20.2.4 and v20.2.5 have `FROM_IMAGE=quay.io/centos/centos:stream9` on amd64 and arm64. The Rocky-10 requirement from Umbrella and cephcsi 3.18 does not apply to this Tentacle patch. Read with `docker buildx imagetools inspect --format '{{json .Image}}' quay.io/ceph/ceph:<tag>`; match each platform's `CEPH_SHA1` label to the dereferenced upstream Git tag. Ceph publishes Git tags and official release notes without necessarily creating a GitHub Release object.
+
+20.2.5 adds `bdev_discard_max_bytes`, default `10_G`, as both an async discard queue limit and a health-warning threshold. [ceph#71602](https://github.com/ceph/ceph/pull/71602) warns at 80% of that byte limit or the configured item limit. This cluster explicitly enables discard with one async thread, so inspect any new `*_DISCARD_QUEUE` health warning after rollout rather than muting it or assuming the old health-warning set is exhaustive. The BlueFS spillover cleaner remains opt-in. Its new default is false.
+
+#919 completed the 20.2.5 Helm upgrade in about nine minutes, with transient OSD-down/degraded warnings during sequential restarts. All eight daemons converged, all 33 PGs recovered, and no discard-queue warning appeared during the next 30 minutes of observation. Rook v1.20.8's CephCluster Ready condition has no `observedGeneration`; check its `status.phase`, Ready condition, desired image and reported daemon versions together. Keep the generation check for the HelmRelease, which does supply it, rather than applying that check to both resource types and falsely timing out.
+
 ## Health gate
 
 Before any verdict: `kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status` is `HEALTH_OK`, all OSDs up/in, PGs `active+clean`. Kubernetes support lives in `Documentation/Getting-Started/Prerequisites/prerequisites.md` at the tag; no chart declares a `kubeVersion`, so CI never catches a mismatch. v1.20.7 covers v1.31–v1.36 and v1.20.8 covers v1.31–v1.37. The kubelet bump to v1.37.0 (#656) went in while Rook was still on v1.20.7, so Rook ran unsupported until #780. Read that file at both tags on every Rook bump, and on every kubelet minor.
@@ -71,6 +79,10 @@ Reviewed in #818 (v1.20.8 → 1.21.0). Chart tags drop the `v` prefix from 1.21.
 Rechecked on 1.21.1: the null `ROOK_CREATE_CSI_OPERATOR_RESOURCES` setting persists. Require the explicit value rather than carrying forward an old review's observation of Helm apply mode. The new upgrade guide's blanket StorageClass deletion instruction concerns added default secret parameters; our explicit `cephBlockPools` list supplies its own parameter map. Compare that map to live state before proposing deletion. The secure-mon change in rook#18324 runs when connection encryption is enabled, not merely when `requireMsgr2` is true.
 
 Ceph-CSI 3.18 also changes its image base to Rocky Linux 10, as stated in both the 3.18.0 release notes and its Dockerfile change. Assess CPU compatibility for the exact per-architecture 3.18.1 plugin image on every CSI node, even when `cephImage` remains pinned to 20.2.4. Holding only the separate Ceph 21 PR does not exclude this packaging change from the Rook bump. The all-node isolated-image compatibility recipe is still missing; current 3.17.1 plugin readiness does not test the candidate.
+
+Rechecked on 1.21.2: the missing CSI safeguard and Rocky-10 plugin default persist. [rook#18607](https://github.com/rook/rook/issues/18607) reproduces the x86-64-v3 startup failure. Its maintainer comment warns that pinning the literal old default image can be removed by Rook's image-default cleanup; validate the reconciler's effective image before recommending that workaround. A promised 3.18.2-rocky9 is not evidence that 3.18.1 supports older CPUs.
+
+1.21.2 also passes `--ms-bind-msgr1=false` to OSD, mgr and MDS daemons when `requireMsgr2` is true ([rook#18557](https://github.com/rook/rook/pull/18557)). This repo sets that value explicitly. Unlike the 1.20.8 patch example above, this Rook-only bump changes OSD pod arguments and can roll OSDs even though the Ceph image stays pinned. Check clients' effective msgr2 settings and allow Ceph to recover between restarts.
 
 ## Ceph majors and pre-releases
 

@@ -17,6 +17,12 @@ All Silences in `kubernetes/apps/observability/silence-operator/silences/` set o
 
 Release 0.21.1 changes binary architecture packaging and removes the pod-template `releaseRevision` annotation. That removal explains its non-image Flux diff. The controller implementation and templated CRD stayed unchanged on #871; confirm those facts rather than assuming every patch is image-only.
 
+## Optional extra arguments in 0.22.0
+
+On #929, both pulled chart artifacts confirmed matching appVersions, 0.21.1 and 0.22.0. The only values/schema addition is optional `extraArgs: []`, an array of strings appended after the existing container arguments. Leaving it unset preserves the existing arguments. No bootstrap entry is needed.
+
+The complete 19-file upstream comparison contains no application Go source changes. The controller's 100-year fallback and the chart's templated CRDs are unchanged. Old/new renders with this repo's Alertmanager address and disabled NetworkPolicy differ only in version labels and image. The release also changes China-registry publishing order, not our registry address. Do not infer a runtime preflight requirement from the minor version alone; recheck these facts on later releases.
+
 ## Registry lag
 
 GitHub releases sometimes land before the chart and image reach gsoci (giantswarm/silence-operator#627, #731). If CI can't pull the chart, check the image with `docker manifest inspect gsoci.azurecr.io/giantswarm/silence-operator:<new>` before treating it as a real failure.
