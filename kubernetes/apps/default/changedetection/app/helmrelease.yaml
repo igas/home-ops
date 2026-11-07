@@ -18,7 +18,7 @@ spec:
           app:
             image:
               repository: ghcr.io/dgtlmoon/changedetection.io
-              tag: 0.60.9@sha256:04eaae7915bad711160cb15abe160f6d3fabe98bbbd658509d4b7a654000fb2d
+              tag: 0.70.2@sha256:36ebb3586e9a6b14af6fb488c6e29b60eceb79ee414ecdb6ac2b91dd25b1c7ba
             env:
               BASE_URL: "https://{{ .Release.Name }}.igas.dev"
               DISABLE_VERSION_CHECK: "true"
@@ -77,7 +77,7 @@ spec:
           browser:
             image:
               repository: ghcr.io/browserless/chromium
-              tag: v2.57.0@sha256:6bac628b3d8293f8fb251d3a6b63030dfc5a1cb0c7e5c39abe5efd8f4b25360b
+              tag: v2.60.0@sha256:a9c2dea3399449e1b1f47cf49d33ee249e8aa9bd9222567a0224d52f4bb24602
             env:
               CONCURRENT: "4"
               TIMEOUT: "60000"

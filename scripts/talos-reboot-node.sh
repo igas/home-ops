@@ -43,7 +43,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$IP" ]] || { echo "--ip is required" >&2; usage; }
-for tool in kubectl talosctl jq; do command -v "$tool" >/dev/null || { echo "$tool not found on PATH" >&2; exit 127; }; done
+for tool in python3 yq kubectl talosctl jq; do command -v "$tool" >/dev/null || { echo "$tool not found on PATH" >&2; exit 127; }; done
+
+# Talos v1.14's CLI drain uses workstation DNS and a freshly fetched admin
+# kubeconfig. An operator kubeconfig using an IP can conceal this failure.
+python3 "$(dirname "$0")/talos-client-api-check.py" --ip "$IP"
 
 AM_NS="observability"
 AM_POD="alertmanager-kube-prometheus-stack-0"

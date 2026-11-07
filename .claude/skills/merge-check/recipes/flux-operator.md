@@ -36,3 +36,11 @@ On every bump:
 `task flux-mcp` opens the port-forward (see `docs/runbooks/flux-mcp.md`).
 
 The repo's `.mcp.json` points Claude Code at `http://localhost:9090/mcp`. List the tools and check that none of the mutating ones appear. The chart's NetworkPolicy only admits traffic from `flux-system`. Port-forward enters the pod's network namespace directly, so it is not blocked.
+
+## Flux 2.10 through operator 0.62
+
+The 0.62.1 manifests artifact selects Flux 2.10.0 with `version: 2.x`; a chart render alone does not show the controller upgrade. Kubernetes 1.37.1 meets its compatibility table.
+
+Check live Alert/Provider specs before accepting the notification v1 conversion. It drops `Alert.spec.summary`, `Provider.spec.interval`, and legacy proxy/TLS settings in `secretRef`. Use `eventMetadata.summary`, `proxySecretRef`, and `certSecretRef`. Object identity also becomes unconditional and the default RBAC loses TokenRequest permission. Inspect source `serviceAccountName`, remote kubeConfig references and cloud authentication before deciding whether an explicit token-creation binding is needed. Our #905 snapshot used generic OCI sources without object ServiceAccounts and controller-level age decryption. SPIFFE remains opt-in.
+
+Read all four enabled controller changelogs, including 1.10.1 source/kustomize and 1.7.1 helm patches. The MCP chart keeps `readonly` and `maskSecrets`; verify their rendered arguments even when they are outside the Flux diff's context lines.
