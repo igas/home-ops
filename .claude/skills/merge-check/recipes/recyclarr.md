@@ -27,6 +27,8 @@ gh api repos/recyclarr/recyclarr/compare/vOLD...vNEW --jq '.files[].filename' | 
 
 Check every change under `docker/`. Because we pass `args: [sync]`, only the `"$#" -gt 0` branch of `docker/scripts/entrypoint.sh` runs. The supercronic and `CRON_SCHEDULE` branch never runs here. Since v8.7.3 that branch `exec`s recyclarr, so recyclarr gets SIGTERM directly. Changes to the YAML schema (`src/Recyclarr.Core/Config/`, or anything else under `Config`) need to be compared with `app/resources/recyclarr.yml`.
 
+Version 8.8.1 fixes Radarr 7 OIDC sync, unknown setting values, unreadable HTTP-200 responses and Sonarr v5 progress/success reporting. Check the live Radarr auth method rather than inferring OIDC from its version. On #896 it was Forms, while Sonarr was already v5, making the reporting fixes relevant without an auth change. The source comparison changed no docker or Config files.
+
 ## Preflight
 
 None exists yet. A real sync writes to Sonarr and Radarr, so a throwaway Pod running `sync` is not read-only. `recyclarr config list` or `sync --preview` would be the place to start if a config-schema risk ever earns a preflight.

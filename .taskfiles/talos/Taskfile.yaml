@@ -4,6 +4,19 @@ version: '3'
 tasks:
 
   check-api:
+    desc: Check the workstation drain API path and every Talos host's DNS/API path
+    cmds:
+      - task: check-client-api
+      - task: check-host-api
+
+  check-client-api:
+    desc: Check the workstation API path used by talosctl cordon/drain [IP=optional]
+    cmd: python3 {{.SCRIPTS_DIR}}/talos-client-api-check.py {{if .IP}}--ip {{.IP}}{{end}}
+    preconditions:
+      - test -f {{.TALOSCONFIG}}
+      - which python3 talosctl kubectl yq
+
+  check-host-api:
     desc: Check API DNS and TLS-authenticated node reads from every Talos host
     cmd: python3 {{.SCRIPTS_DIR}}/talos-api-check.py
     preconditions:
@@ -47,7 +60,11 @@ tasks:
   upgrade-node:
     desc: Upgrade Talos on a single node [IP=required]
     dir: '{{.TALOS_DIR}}'
-    cmd: talhelper gencommand upgrade --node {{.IP}} --extra-flags "--image='{{.TALOS_IMAGE}}:{{.TALOS_VERSION}}' --timeout=10m" | bash
+    cmds:
+      - task: check-client-api
+        vars:
+          IP: '{{.IP}}'
+      - talhelper gencommand upgrade --node {{.IP}} --extra-flags "--image='{{.TALOS_IMAGE}}:{{.TALOS_VERSION}}' --timeout=10m" | bash
     vars:
       TALOS_IMAGE:
         sh: yq '.nodes[] | select(.ipAddress == "{{.IP}}") | .talosImageURL' {{.TALOS_DIR}}/talconfig.yaml
@@ -59,7 +76,7 @@ tasks:
       - talosctl --nodes {{.IP}} get machineconfig
       - talosctl config info
       - test -f {{.TALOSCONFIG}}
-      - which kubectl talhelper talosctl yq
+      - which python3 kubectl talhelper talosctl yq
 
   reboot-node:
     desc: Reboot a node after CNPG switchover, with Ceph noout and alerts silenced [IP=required DURATION=30m FORCE=false]
@@ -74,7 +91,7 @@ tasks:
     preconditions:
       - talosctl --nodes {{.IP}} get machineconfig
       - test -f {{.TALOSCONFIG}}
-      - which kubectl talosctl jq
+      - which python3 yq kubectl talosctl jq
 
   upgrade-k8s:
     desc: Upgrade Kubernetes

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+from typing import Any
 import unittest
 
 
@@ -17,7 +18,7 @@ class TalosRebootNode(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.path = Path(self.directory.name)
         self.log = self.path / "calls.jsonl"
-        self.data = {
+        self.data: dict[str, Any] = {
             "nodes": [{"metadata": {"name": "worker"}, "status": {
                 "addresses": [{"type": "InternalIP", "address": "192.168.6.12"}]}}],
             "clusters.postgresql.cnpg.io": [{
@@ -35,9 +36,21 @@ args = sys.argv[1:]
 with open(os.environ["CALLS"], "a") as f:
     f.write(json.dumps([Path(sys.argv[0]).name, *args]) + "\\n")
 if os.environ.get("FAIL_ON") and os.environ["FAIL_ON"] in " ".join(args): sys.exit(1)
-if Path(sys.argv[0]).name == "talosctl": sys.exit()
+if Path(sys.argv[0]).name == "talosctl":
+    if "kubeconfig" in args: print("fixture, not credentials")
+    sys.exit()
 path = Path(os.environ["CLUSTER"])
 data = json.loads(path.read_text())
+if "--kubeconfig" in args:
+    if "config" in args:
+        print(json.dumps({"clusters": [{"cluster": {
+            "server": "https://k8s.igas.dev:6443", "certificate-authority-data": "DATA+OMITTED"
+        }}]}))
+        sys.exit()
+    if os.environ.get("CALLER_DNS_FAILURE"):
+        sys.exit("lookup k8s.igas.dev: no such host")
+    print(json.dumps({"metadata": {"name": "k8s-worker-02"}, "spec": {}}))
+    sys.exit()
 if args[:2] == ["cnpg", "promote"]:
     if not os.environ.get("STUCK"):
         for c in data["clusters.postgresql.cnpg.io"]:
@@ -97,15 +110,22 @@ sys.exit("unexpected command: " + repr(args))
         self.assertEqual(result.returncode, 0, result.stderr)
         promotion = calls.index(["kubectl", "cnpg", "promote", "pg", "pg-2", "--namespace", "database"])
         verification = next(i for i, c in enumerate(calls) if c[1:3] == ["get", "cluster.postgresql.cnpg.io"])
-        reboot = next(i for i, c in enumerate(calls) if c[0] == "talosctl")
+        reboot = next(i for i, c in enumerate(calls) if c[0] == "talosctl" and "reboot" in c)
         self.assertLess(promotion, verification)
         self.assertLess(verification, reboot)
 
     def assert_reboot_blocked(self, **env):
         result, calls = self.run_cli(**env)
         self.assertNotEqual(result.returncode, 0, result.stderr)
-        self.assertFalse(any(c[0] == "talosctl" for c in calls), calls)
+        self.assertFalse(any(c[0] == "talosctl" and "reboot" in c for c in calls), calls)
         self.assertFalse(any("amtool" in c for c in calls), calls)
+
+    def test_caller_dns_failure_blocks_maintenance_before_side_effects(self):
+        result, calls = self.run_cli(CALLER_DNS_FAILURE="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("lookup k8s.igas.dev: no such host", result.stderr)
+        self.assertFalse(any("reboot" in c or "promote" in c or "amtool" in c for c in calls), calls)
+        self.assertFalse(any("ceph" in c for c in calls), calls)
 
     def test_no_replica_on_another_node_blocks_reboot(self):
         self.data["pods"][1]["spec"]["nodeName"] = "worker"
@@ -138,7 +158,7 @@ sys.exit("unexpected command: " + repr(args))
         self.data["pods"][0]["spec"]["nodeName"] = "other"
         result, calls = self.run_cli()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertTrue(any(c[0] == "talosctl" for c in calls))
+        self.assertTrue(any(c[0] == "talosctl" and "reboot" in c for c in calls))
         self.assertFalse(any(c[1:3] == ["cnpg", "promote"] for c in calls))
 
     def test_no_cnpg_clusters_reboots_normally(self):
@@ -146,12 +166,12 @@ sys.exit("unexpected command: " + repr(args))
         self.data["pods"] = []
         result, calls = self.run_cli()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertTrue(any(c[0] == "talosctl" for c in calls))
+        self.assertTrue(any(c[0] == "talosctl" and "reboot" in c for c in calls))
 
     def test_primary_moving_back_after_switchover_blocks_reboot(self):
         result, calls = self.run_cli(PRIMARY_RETURNS="1")
         self.assertNotEqual(result.returncode, 0, result.stderr)
-        self.assertFalse(any(c[0] == "talosctl" for c in calls), calls)
+        self.assertFalse(any(c[0] == "talosctl" and "reboot" in c for c in calls), calls)
 
 
 if __name__ == "__main__":

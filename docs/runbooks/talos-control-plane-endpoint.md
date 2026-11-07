@@ -129,6 +129,12 @@ commands below with `GODEBUG=netdns=go` on this workstation until its macOS
 resolver configuration is corrected. This workaround changes no system
 configuration and does not mean ordinary macOS resolution is fixed.
 
+Update, 2026-11-06: the operator has removed that workstation override. Normal
+macOS resolution and the fetched Talos admin kubeconfig's DNS-endpoint node
+GETs now pass without `GODEBUG`. Use `task talos:check-api` before maintenance.
+See [the drain caller finding](talos-api-dns.md#drain-caller-finding-2026-11-06)
+for why this workstation setting also affected `talosctl` cordon/drain.
+
 For k8s-gateway's move to `192.168.100.8` and UniFi DNS dependency verification,
 see [k8s-gateway-bgp-migration.md](k8s-gateway-bgp-migration.md). Prefer the router
 as the normal LAN resolver so its API records remain available. Moving the

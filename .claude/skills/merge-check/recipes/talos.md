@@ -79,6 +79,8 @@ On 2026-10-15 master-01 shut down cleanly for v1.14.3 and then had no network pr
 
 ## Schematic and extension check
 
+Factory requests can time out while a new schematic/version is built. On the 1.14.5 review both exact regular-installer manifests timed out initially and returned HTTP 200 on retry. Record the successful exact manifest response before treating the images as available; an extension-list response alone does not verify the installer.
+
 Installed extensions: `talosctl -n <ip> get extensions -o yaml` (includes the `schematic` pseudo-extension; compare its version to `talosImageURL` in `talconfig.yaml`, they drifted apart on paper before). Factory availability:
 
 ```sh
@@ -101,3 +103,9 @@ etcd HTTP endpoints (`/metrics`, `/health`) move from 2379 to 2383, unless `--li
 ## Deprecated-but-supported fields this cluster still uses (as of 1.14)
 
 `machine.sysctls`, `machine.files` (CRI `20-customization.part`), `machine.features.hostDNS`, `machine.kubelet.nodeIP` and `extraConfig`, `cluster.etcd` (no document kind yet), and the three blocked on talhelper's machinery: `machine.features.kubernetesTalosAPIAccess` (tuppr's grant; still honoured, home-operations/tuppr#455), `cluster.allowSchedulingOnControlPlanes`, `cluster.coreDNS`. Re-check each against the next minor's "removed" list.
+
+## An API probe does not verify the drain caller
+
+Read the comments on open [#860](https://github.com/igas/home-ops/issues/860) before either node-layer verdict. The operator recorded a failed `talosctl reboot --drain=true` on master-02 after the host DNS/TLS/authenticated API probe passed on all four nodes. The failure was `lookup k8s.igas.dev: no such host`, before reboot. The comment explicitly leaves the actual drain caller and its resolver unresolved.
+
+A Ready fleet, a successful host probe, or valid target machine configuration does not close that issue. Distinguish workstation-side talosctl draining from tuppr's upgrade-job caller. Until the latter's resolver/API access is verified through a bounded read-only procedure, record the upgrade risk and recipe gap. A real cordon, drain or reboot is outside merge-check's write allowance. The previously used manual IP-endpoint drain is maintenance history, not an authorized preflight.

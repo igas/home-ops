@@ -68,9 +68,19 @@ Reviewed in #818 (v1.20.8 → 1.21.0). Chart tags drop the `v` prefix from 1.21.
 - **operator 1.1.0 NetworkPolicies** deny ingress and allow egress on the controller-manager and the (non-hostNetwork) ctrlplugins. Harmless while nothing ingresses to them (no webhooks, Services, csi-addons, or monitors). Re-check if a PodMonitor or csi-addons is ever enabled.
 - CRD check that worked: render the operator chart with `--include-crds` at both tags, convert with `yq -o=json`, and diff the set of `openAPIV3Schema` property paths per CRD version. 1.21.0 removed only `CephNVMeOFGateway.spec.pool` and `ObjectBucket.spec.authentication`.
 
+Rechecked on 1.21.1: the null `ROOK_CREATE_CSI_OPERATOR_RESOURCES` setting persists. Require the explicit value rather than carrying forward an old review's observation of Helm apply mode. The new upgrade guide's blanket StorageClass deletion instruction concerns added default secret parameters; our explicit `cephBlockPools` list supplies its own parameter map. Compare that map to live state before proposing deletion. The secure-mon change in rook#18324 runs when connection encryption is enabled, not merely when `requireMsgr2` is true.
+
+Ceph-CSI 3.18 also changes its image base to Rocky Linux 10, as stated in both the 3.18.0 release notes and its Dockerfile change. Assess CPU compatibility for the exact per-architecture 3.18.1 plugin image on every CSI node, even when `cephImage` remains pinned to 20.2.4. Holding only the separate Ceph 21 PR does not exclude this packaging change from the Rook bump. The all-node isolated-image compatibility recipe is still missing; current 3.17.1 plugin readiness does not test the candidate.
+
 ## Ceph majors and pre-releases
 
 Ceph `x.0.z` is dev, `x.1.z` is a release candidate, and `x.2.z` is stable. Renovate offers RCs as majors (#721 offered v21.1.2). Confirm with `src/ceph_release` at the tag (`gh api "repos/ceph/ceph/contents/src/ceph_release?ref=<tag>"`), which reads e.g. `21 umbrella dev`. Then check the running Rook supports the major: `supportedVersions` in `pkg/operator/ceph/version/version.go` at the Rook tag. If it doesn't, the CephCluster errors `allowUnsupported must be set to true` and the HelmRelease sits until its timeout and rolls back. A pre-release, or a major the running Rook does not support, is a hold.
+
+For 21.2.0, the official [Umbrella notes](https://docs.ceph.com/en/latest/releases/umbrella/) identify a stable release even though the GitHub tag lookup returned 404 during #909. Record the discrepancy rather than treating the container tag as source provenance. Rook v1.20.8 supports only Squid/Tentacle; v1.21.1 adds Umbrella. Verify the live operator, not the version in a separate open PR.
+
+Umbrella containers switch to Rocky Linux 10 and require x86-64-v3 CPUs. Chart rendering cannot verify that requirement on every daemon node. PG autoscaler defaults also double; check effective OSD memory targets before recommending the old limits. The authoritative Ceph issue tracker is tracker.ceph.com, not GitHub Issues. On #909, [82397](https://tracker.ceph.com/issues/82397) reported mgr MapCache memory growth after this exact upgrade and [82316](https://tracker.ceph.com/issues/82316) reported missing python3-saml in the target image. No isolated all-node CPU/image or mgr-cache compatibility preflight is validated here yet. Keep those gaps explicit and leave production Ceph configuration unchanged during review.
+
+On the 2026-11-01 re-review, #82397 was closed as a duplicate of [#81794](https://tracker.ceph.com/issues/81794), not as a shipped fix. Its maintainer comment says the fix merged on main and an Umbrella backport should be available. Trace that backport into a released target image before clearing the finding; a duplicate's closed status is not evidence that 21.2.0 contains the correction.
 
 ## `network.provider: host`
 
