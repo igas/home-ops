@@ -9,6 +9,10 @@ spec:
     name: cilium
   interval: 1h
   values:
+    upgradeCompatibility: "1.18"
+    updateStrategy:
+      rollingUpdate:
+        maxUnavailable: 1
     autoDirectNodeRoutes: true
     bpf:
       masquerade: true
@@ -20,7 +24,7 @@ spec:
       # Required for pairing with Multus CNI
       exclusive: false
     cgroup:
-      automount:
+      autoMount:
         enabled: false
       hostRoot: /sys/fs/cgroup
     devices: bond+
@@ -46,7 +50,8 @@ spec:
     loadBalancer:
       algorithm: maglev
       mode: "dsr"
-    localRedirectPolicy: true
+    localRedirectPolicies:
+      enabled: true
     operator:
       dashboards:
         enabled: true
