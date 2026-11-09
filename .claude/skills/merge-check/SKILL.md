@@ -37,9 +37,17 @@ Three, and only three:
 
 - `safe`: merge as is.
 - `safe with prep`: merge, but the **Prep** line says what to do first or straight after.
-- `hold`: a real risk found, **or** a mandatory check could not be completed. Unverified is never `safe`.
+- `hold`: a real risk outside the accepted downtime budget, **or** a mandatory check could not be completed. Unverified is never `safe`.
 
 Labels follow the verdict: `safe` and `safe with prep` set `ready-for-human`; `hold` sets `needs-info`. Remove whichever of the two the PR carried before.
+
+## Accepted downtime budget
+
+The operator accepts up to **10 minutes of service downtime per dependency upgrade**, including interrupted streams and temporary gateway unavailability. Confirmed by the operator on 2026-11-09 while approving PR #930.
+
+Use `safe with prep` rather than `hold` when the only remaining concern is a temporary interruption expected to recover within this budget. State the evidence for recovery and the remaining uncertainty. The **Prep** line requires checking service recovery after rollout; if an interruption reaches 10 minutes, report that the budget is exceeded and seek a recovery decision. The budget is an acceptance limit, not a guarantee about rollout duration.
+
+Explicit operator acceptance may waive a downtime-only preflight or recipe gap for the specified PR. Record the acceptance and retain the unrun check under **Preflight** and **Recipe gaps**; do not describe it as verified. Keep `hold` for data loss, security failures, incompatible configuration, missing mandatory release/CI/cluster checks, or unresolved failure to recover. This budget alone does not authorize merging PRs or changing production resources.
 
 ## Review one PR
 
@@ -62,7 +70,7 @@ Work through every step. The **Checked** line of the comment lists exactly what 
    - Known issues: `gh search issues --repo onedr0p/cluster-template "<depName>"`, plus the dependency's own issue tracker for the new version, plus cluster-template discussions (GraphQL `search(type: DISCUSSION)`).
    - This repo: `gh issue list --search "<component>"`. Link any open issue about the component; if the release notes plausibly fix it, say so.
 
-8. **Preflight, when earned.** Static review names a specific runtime risk, and a [recipe](recipes/) exists for it. Write the risk in one sentence before touching the cluster. The only cluster writes allowed are creating and deleting a single throwaway Pod in the component's namespace, with fresh labels so no controller adopts it. Record command and result under **Preflight**. A named risk with no recipe is a **recipe gap**: verdict `hold`, and the gap goes in the comment.
+8. **Preflight, when earned.** Static review names a specific runtime risk, and a [recipe](recipes/) exists for it. Write the risk in one sentence before touching the cluster. The only cluster writes allowed are creating and deleting a single throwaway Pod in the component's namespace, with fresh labels so no controller adopts it. Record command and result under **Preflight**. A named risk with no recipe is a **recipe gap**: verdict `hold`, unless the accepted downtime policy applies. The gap goes in the comment in either case.
 
 9. **Post.** Write the comment in the shape below, `gh pr comment <n> --body-file`, then swap the label. A new comment every run; history stays on the PR.
 
