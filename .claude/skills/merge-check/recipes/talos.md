@@ -44,6 +44,7 @@ For the 1.14 contract talhelper emits the multi-document Kubernetes config (`Kub
 What talhelper 3.1.17 gets wrong for 1.14 (it vendors Talos machinery `v1.14.0-alpha.2`; check `go.mod` on the talhelper tag before trusting a bump):
 
 - `KubeCoreDNSConfig`, `KubeNodeConfig`, `KubeTalosAPIAccessConfig`, `KubeServiceAccountConfig` are `not registered`, so `cluster.coreDNS`, `cluster.allowSchedulingOnControlPlanes` and `machine.features.kubernetesTalosAPIAccess` stay v1alpha1, and the service account issuer stays pinned in `KubeAPIServerConfig.extraArgs` until talhelper ships >= 1.14.0 machinery. Re-check by putting the kind in a controller patch and rendering: the failure is `error decoding document v1alpha1/<Kind>/ (line 1): "<Kind>" "v1alpha1": not registered`. Still all four on 2026-09-13; v3.1.17 is the newest release and talhelper `master` is also on `v1.14.0-alpha.2`, with budimanjojo/talhelper#1708 open at rc.2.
+- `CRICustomizationConfig`, `EtcFileConfig` and `KubeletConfig` also fail with `"<Kind>" "v1alpha1": not registered`, probed on 2026-09-15 for #746. Together with the four kinds above, these remain blocked until talhelper's machinery changes; no need to re-probe 3.1.17. `SysctlConfig` already renders with 3.1.17, so #746 moves all nine `machine.sysctls` values to its `params` map.
 - `KubeEtcdEncryptionConfig` renders with key name `key1` and no `identity` provider. The live nodes run `key2` plus `identity`, written by the legacy path: under the 1.13 contract the config carries only `secretboxEncryptionSecret` and Talos builds the file itself. A renamed key makes every existing Secret unreadable. `kubernetes.yaml` deletes the generated document and `kube-etcd-encryption.yaml` re-adds the live shape with `${secretboxEncryptionSecret}` from `talos/talenv.sops.yaml`. Compare against the node before any apply: `talosctl -n <ip> read /system/secrets/kubernetes/kube-apiserver/encryptionconfig.yaml`.
 - `additionalApiServerCertSans` is dropped from `KubeAPIServerConfig`; the patch repeats them as `certExtraSANs`.
 
@@ -102,7 +103,7 @@ etcd HTTP endpoints (`/metrics`, `/health`) move from 2379 to 2383, unless `--li
 
 ## Deprecated-but-supported fields this cluster still uses (as of 1.14)
 
-`machine.sysctls`, `machine.files` (CRI `20-customization.part`), `machine.features.hostDNS`, `machine.kubelet.nodeIP` and `extraConfig`, `cluster.etcd` (no document kind yet), and the three blocked on talhelper's machinery: `machine.features.kubernetesTalosAPIAccess` (tuppr's grant; still honoured, home-operations/tuppr#455), `cluster.allowSchedulingOnControlPlanes`, `cluster.coreDNS`. Re-check each against the next minor's "removed" list.
+`machine.files` (CRI `20-customization.part`), `machine.features.hostDNS`, `machine.kubelet.nodeIP` and `extraConfig`, `cluster.etcd` (no document kind yet), and the three blocked on talhelper's machinery: `machine.features.kubernetesTalosAPIAccess` (tuppr's grant; still honoured, home-operations/tuppr#455), `cluster.allowSchedulingOnControlPlanes`, `cluster.coreDNS`. Re-check each against the next minor's "removed" list.
 
 ## An API probe does not verify the drain caller
 
