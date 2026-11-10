@@ -84,6 +84,14 @@ Rechecked on 1.21.2: the missing CSI safeguard and Rocky-10 plugin default persi
 
 1.21.2 also passes `--ms-bind-msgr1=false` to OSD, mgr and MDS daemons when `requireMsgr2` is true ([rook#18557](https://github.com/rook/rook/pull/18557)). This repo sets that value explicitly. Unlike the 1.20.8 patch example above, this Rook-only bump changes OSD pod arguments and can roll OSDs even though the Ceph image stays pinned. Check clients' effective msgr2 settings and allow Ceph to recover between restarts.
 
+### Observed #818 rollout
+
+The operator merged #818 on 2026-11-10 after the explicit CSI safeguard commit. Both charts became Ready on 1.21.2 before the daemon rollout finished. Monitor workload generations/readiness and Ceph state as well as HelmRelease status. Mons, mgrs and OSDs all restarted while Ceph stayed at 20.2.5. OSDs restarted sequentially, with temporary OSD_DOWN/PG_DEGRADED warnings; all three recovered and PGs were clean again by about ten minutes after merge. This measures rollout recovery, not application downtime.
+
+All twelve cephcsi 3.18.1 plugin Pods became Ready, including both nodeplugin DaemonSets on all four nodes, with zero container restarts. This establishes startup compatibility for the deployed CSI image on those nodes, not an isolated preflight or compatibility of the separate Ceph 21 image. The ConfigMap stored `ROOK_CREATE_CSI_OPERATOR_RESOURCES: "true"`, and the existing CephConnection/ClientProfiles survived. OSD startup probes briefly reported `admin_socket: invalid command`; they recovered without container restarts.
+
+Treat `active+clean+scrubbing` and `active+clean+scrubbing+deep` as clean PGs during monitoring. Compare state tokens rather than requiring the exact string `active+clean`, which falsely delayed the first monitoring script's success condition. The existing MON_DISK_LOW warning remained after recovery; no new unmuted health check persisted. All 41 PVCs were Bound, all active cluster Pods were Ready, and no mount/attach Warning event appeared after merge. No application-level outage duration was measured.
+
 ## Ceph majors and pre-releases
 
 Ceph `x.0.z` is dev, `x.1.z` is a release candidate, and `x.2.z` is stable. Renovate offers RCs as majors (#721 offered v21.1.2). Confirm with `src/ceph_release` at the tag (`gh api "repos/ceph/ceph/contents/src/ceph_release?ref=<tag>"`), which reads e.g. `21 umbrella dev`. Then check the running Rook supports the major: `supportedVersions` in `pkg/operator/ceph/version/version.go` at the Rook tag. If it doesn't, the CephCluster errors `allowUnsupported must be set to true` and the HelmRelease sits until its timeout and rolls back. A pre-release, or a major the running Rook does not support, is a hold.
@@ -92,7 +100,11 @@ For 21.2.0, the official [Umbrella notes](https://docs.ceph.com/en/latest/releas
 
 Umbrella containers switch to Rocky Linux 10 and require x86-64-v3 CPUs. Chart rendering cannot verify that requirement on every daemon node. PG autoscaler defaults also double; check effective OSD memory targets before recommending the old limits. The authoritative Ceph issue tracker is tracker.ceph.com, not GitHub Issues. On #909, [82397](https://tracker.ceph.com/issues/82397) reported mgr MapCache memory growth after this exact upgrade and [82316](https://tracker.ceph.com/issues/82316) reported missing python3-saml in the target image. No isolated all-node CPU/image or mgr-cache compatibility preflight is validated here yet. Keep those gaps explicit and leave production Ceph configuration unchanged during review.
 
-On the 2026-11-01 re-review, #82397 was closed as a duplicate of [#81794](https://tracker.ceph.com/issues/81794), not as a shipped fix. Its maintainer comment says the fix merged on main and an Umbrella backport should be available. Trace that backport into a released target image before clearing the finding; a duplicate's closed status is not evidence that 21.2.0 contains the correction.
+On the 2026-11-10 re-review, the Umbrella backport [#82489](https://tracker.ceph.com/issues/82489) was resolved at `v21.2.0-137-gc9d4c305fb`. GitHub's compare confirms that commit is 137 commits ahead of v21.2.0, so the fix is not in this target. Trace a backport into the selected image before clearing the finding; a resolved issue alone is not proof of inclusion.
+
+The v21.2.0 tag is readable again as of 2026-11-10. Dereferencing its annotated tag yields `b060042deb05d33e6cc358970cfb8221240bcf3e`, equal to both platform images' `CEPH_SHA1` labels. [Ceph #82669](https://tracker.ceph.com/issues/82669) documents the missing-tag publication bug. A separate packaging bug, [#82496](https://tracker.ceph.com/issues/82496), left `src/ceph_release` at `21 umbrella dev` and cephadm's default image on CI main. The official release is stable, but these artifacts shipped incorrect release metadata. Rook's explicit image avoids the cephadm default; do not mistake either the stale `dev` marker for an RC or a repaired tag for repaired image contents.
+
+Read Ceph health independently of HelmRelease/CephCluster Ready. On 2026-11-10 both remained Ready while `ceph health detail` reported unmuted `MON_DISK_LOW` with mon.i at 29% available. That fails the health gate even with all PGs active+clean. Resolve monitor filesystem pressure before an upgrade; this is distinct from the deliberate CephX warning mutes.
 
 ## `network.provider: host`
 

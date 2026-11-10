@@ -17,6 +17,14 @@ talosctl -n 192.168.6.2 get kubeletspec -o yaml | grep seccompDefault
 
 A change of uid, or a dropped file capability, would need a preflight: a throwaway Pod with the new image and securityContext, serving a minimal `.:53 { whoami }` Corefile, then a `dig` against its pod IP.
 
+## Chart-only rollouts
+
+Render both charts with the PR-head HelmRelease values, without stripping attributes. `templates/deployment.yaml` hashes the entire rendered ConfigMap, including its `helm.sh/chart` label. A chart-version change can therefore change the pod's `checksum/config` and restart both replicas even when the Corefile and image are identical. Flux Local strips both attributes, so an empty Helm diff does not establish that pods will stay running.
+
+Verified for chart 1.49.0 to 1.50.2 in PR #926: appVersion stays 1.14.7, and the only rendered changes are chart labels and the pod checksum. The values changes are comments only; optional `service.ipFamilies` and default-port template support leave our explicit port 53/IPv4 Service unchanged. Neither chart supplies a values schema.
+
+For a chart-only rollout, inspect the live replica count, rolling-update strategy and readiness delay. In #926, both replicas were Ready, `maxUnavailable` was 1, `maxSurge` was 25%, readiness started after 30 seconds, and the Corefile retained `lameduck 5s`. Those support recovery within the accepted downtime budget, not a timing guarantee. Check both replicas and client DNS recovery after rollout; an interruption reaching 10 minutes requires a recovery decision. [coredns/helm#292](https://github.com/coredns/helm/issues/292) tracks the existing readiness delay, not a new 1.50.2 regression.
+
 ## Precedent
 
 Chart 1.49.0 changes `serviceAccount.create` to true, fixing [coredns/helm#283](https://github.com/coredns/helm/issues/283). Our HelmRelease already sets it true. Compare the actual ServiceAccount and ClusterRoleBinding rather than assuming that the changed default moves this cluster's RBAC. The appVersion remains 1.14.7 across 1.48.2 to 1.49.0.
