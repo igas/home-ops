@@ -11,6 +11,8 @@ spec:
   interval: 1h
   values:
     csi:
+      # v1.21 omits this default; keep Rook managing CSI connections and profiles.
+      createCsiOperatorResources: true
       # v1.20 left only the CSI image tags, installCsiOperator and this
       # ServiceMonitor here. The driver toggles and cephFSKernelMountOptions moved
       # out: the drivers themselves to the ceph-csi-drivers HelmRelease, the kernel
