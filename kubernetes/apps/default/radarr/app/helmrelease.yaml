@@ -42,7 +42,8 @@ spec:
               # process (period x threshold = 150s unresponsive), not a slow
               # cold start. Readiness fails fast to pull the Pod from the
               # Service. Startup gates both on the same endpoint with a 600s
-              # allowance. See docs/runbooks/probe-tuning.md.
+              # allowance. See docs/runbooks/probe-tuning.md. The Host header
+              # matches Radarr's AllowedHosts; the default (pod IP) gets a 400.
               liveness:
                 enabled: true
                 custom: true
@@ -50,6 +51,9 @@ spec:
                   httpGet:
                     path: /ping
                     port: *port
+                    httpHeaders:
+                      - name: Host
+                        value: radarr.default.svc.cluster.local
                   initialDelaySeconds: 0
                   periodSeconds: 30
                   timeoutSeconds: 10
@@ -61,6 +65,9 @@ spec:
                   httpGet:
                     path: /ping
                     port: *port
+                    httpHeaders:
+                      - name: Host
+                        value: radarr.default.svc.cluster.local
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
@@ -72,6 +79,9 @@ spec:
                   httpGet:
                     path: /ping
                     port: *port
+                    httpHeaders:
+                      - name: Host
+                        value: radarr.default.svc.cluster.local
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 10
