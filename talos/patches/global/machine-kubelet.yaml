@@ -2,6 +2,10 @@ machine:
   kubelet:
     extraConfig:
       serializeImagePulls: false
+      # Ceph monitors share this filesystem and warn below 30% free space.
+      # Reclaim unused images before reaching that threshold.
+      imageGCHighThresholdPercent: 65
+      imageGCLowThresholdPercent: 60
     nodeIP:
       validSubnets:
         - 192.168.6.0/24
