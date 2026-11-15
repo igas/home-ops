@@ -21,5 +21,6 @@ resources:
   - ./qui/ks.yaml
   - ./radarr/ks.yaml
   - ./recyclarr/ks.yaml
+  - ./ru-radarr/ks.yaml
   - ./sonarr/ks.yaml
   - ./zigbee/ks.yaml

@@ -1,0 +1,129 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ru-radarr
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: ru-radarr
+  interval: 1h
+  values:
+    controllers:
+      ru-radarr:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.7.0
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
+              - secretRef:
+                  name: "{{ .Release.Name }}-db-init-secret"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/radarr
+              tag: 7.0.2.10888@sha256:69ea515df6e2a3ea1490cfa127ffaaf9597a9db84fffa2fa150a6fae98fe04cb
+            env:
+              RADARR__APP__INSTANCENAME: RU Radarr
+              RADARR__LOG__DBENABLED: "False"
+              RADARR__LOG__LEVEL: info
+              RADARR__SERVER__PORT: &port 80
+              RADARR__UPDATE__BRANCH: develop
+              TZ: Australia/Sydney
+            envFrom:
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
+            probes:
+              # Match the main instance's probe budget and AllowedHosts header.
+              # See docs/runbooks/probe-tuning.md.
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                    httpHeaders:
+                      - name: Host
+                        value: ru-radarr.default.svc.cluster.local
+                  initialDelaySeconds: 0
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                    httpHeaders:
+                      - name: Host
+                        value: ru-radarr.default.svc.cluster.local
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                    httpHeaders:
+                      - name: Host
+                        value: ru-radarr.default.svc.cluster.local
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 10
+                  failureThreshold: 60
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 100m
+              limits:
+                memory: 4Gi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        hostnames:
+          - "{{ .Release.Name }}.igas.dev"
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+    persistence:
+      config:
+        existingClaim: "{{ .Release.Name }}"
+      tmp:
+        type: emptyDir
+      backup:
+        type: nfs
+        server: 192.168.3.5
+        path: /volume2/k8s/Backups/ru-radarr
+        globalMounts:
+          - path: /config/Backups
+      k8s:
+        type: nfs
+        server: 192.168.3.5
+        path: /volume2/k8s
