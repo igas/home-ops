@@ -25,6 +25,20 @@ Verified for chart 1.49.0 to 1.50.2 in PR #926: appVersion stays 1.14.7, and the
 
 For a chart-only rollout, inspect the live replica count, rolling-update strategy and readiness delay. In #926, both replicas were Ready, `maxUnavailable` was 1, `maxSurge` was 25%, readiness started after 30 seconds, and the Corefile retained `lameduck 5s`. Those support recovery within the accepted downtime budget, not a timing guarantee. Check both replicas and client DNS recovery after rollout; an interruption reaching 10 minutes requires a recovery decision. [coredns/helm#292](https://github.com/coredns/helm/issues/292) tracks the existing readiness delay, not a new 1.50.2 regression.
 
+## Probe changes
+
+Chart 1.50.5 removes both initial probe delays, inherited by 1.50.7. [coredns/helm#294](https://github.com/coredns/helm/pull/294) explains that `/health` responds independently of Kubernetes readiness, while `/ready` waits for plugin readiness. The unchanged liveness failure threshold permits roughly 40–50 seconds before a restart, depending on when the first probe runs. The new `terminationMessagePolicy: FallbackToLogsOnError` in 1.50.6 changes failure reporting, not the process or its permissions. Neither chart adds required values or a schema.
+
+When reviewing a shorter liveness delay, name the risk before the preflight: CoreDNS could restart before startup completes, delaying DNS recovery.
+
+1. Render the new chart with PR-head values. Compare its Corefile with the live `coredns` ConfigMap before reusing that ConfigMap.
+2. Copy the rendered Deployment's pod spec into one throwaway Pod in `kube-system`. Give it only a fresh `merge-check` label and a unique name, without Deployment or Service selector labels or owner references. Keep the rendered image, probes, resource limits, service account, affinity, tolerations and `dnsPolicy`.
+3. Create that Pod and wait up to 90 seconds for Ready. Record container-start and Ready timestamps. Port-forward its DNS TCP port and both HTTP probe ports to unused localhost ports. Require HTTP 200 from `/health` and `/ready`, an internal Kubernetes Service A answer, and an external A answer.
+4. Observe it for at least 60 seconds after readiness, beyond the new liveness failure window. Record the final Ready condition, restart count, logs and Pod events. Pass only if DNS answers, both probes pass, and there are no restarts or unexplained warning events. Initial readiness connection refusals or HTTP 503 responses before the first Ready transition are expected with zero delay. Check their last-occurrence timestamps and report them rather than treating every Warning event as a failure.
+5. Stop port-forwarding and delete only the throwaway Pod, including on failure. This checks one startup, not a production rolling update or client connection recovery. Keep rollout recovery checks in Prep.
+
+Verified in PR #943 on `k8s-master-03`: the rendered 1.50.7 pod spec, using the identical live Corefile, reached Ready six seconds after container start. Both HTTP endpoints returned 200; TCP queries answered the internal Kubernetes Service and `github.com`; there were zero restarts after a further 65 seconds. Two initial readiness warnings occurred before Ready, with none later and no liveness warning. The wrapper initially rejected all warnings indiscriminately; inspecting their timestamps established that readiness correctly gated startup. The Pod was deleted.
+
 ## Precedent
 
 Chart 1.49.0 changes `serviceAccount.create` to true, fixing [coredns/helm#283](https://github.com/coredns/helm/issues/283). Our HelmRelease already sets it true. Compare the actual ServiceAccount and ClusterRoleBinding rather than assuming that the changed default moves this cluster's RBAC. The appVersion remains 1.14.7 across 1.48.2 to 1.49.0.

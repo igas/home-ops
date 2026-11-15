@@ -78,6 +78,12 @@ On 2026-10-15 master-01 shut down cleanly for v1.14.3 and then had no network pr
 
 `talosupgrade.yaml` requires `CephCluster status.ceph.health == HEALTH_OK`. Each node reboot takes that node's OSD down for about 5 minutes, so expect a pause between nodes. A `Failed` TalosUpgrade is terminal; resume it with `kubectl annotate talosupgrade talos tuppr.home-operations.com/reset="$(date)"`, which skips nodes already at the target version. After a cephx rotation the four `AUTH_INSECURE_*` warnings keep the cluster at `HEALTH_WARN` and the plan sits `Pending`. Check `ceph health detail` before the verdict and point at the mute in [rook-ceph.md](rook-ceph.md) when that is the only thing red.
 
+On [#945](https://github.com/igas/home-ops/pull/945#issuecomment-6887543217), all HelmReleases and Kustomizations were Ready and every PG was active+clean, but Ceph was `HEALTH_WARN`: `MON_DISK_LOW` reported mon.i at 28% space available. The AUTH_INSECURE warnings were already muted. Inspect the unmuted checks in `ceph health detail`, not just Ready conditions or the presence of accepted mutes. Hold node upgrades until monitor-space health recovers to `HEALTH_OK`; resolving capacity is separate maintenance, not a reason to weaken the gate.
+
+## 1.14.6: AES-CBC generator fix does not replace the encryption pin
+
+[Talos v1.14.6](https://github.com/siderolabs/talos/commit/cc384acab) changes the generated provider for `AESCBCEncryptionSecret` from `secretbox` to `aescbc`. This cluster explicitly pins `secretbox` key2 plus `identity`; the AES-CBC fix does not justify removing that pin or resolve #737. During #945, checksum-verified v1.14.6 talosctl validated all four rendered configs and all four installed configs, with only the existing `.machine.files` warning.
+
 ## Schematic and extension check
 
 Factory requests can time out while a new schematic/version is built. On the 1.14.5 review both exact regular-installer manifests timed out initially and returned HTTP 200 on retry. Record the successful exact manifest response before treating the images as available; an extension-list response alone does not verify the installer.
