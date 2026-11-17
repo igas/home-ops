@@ -6,3 +6,17 @@ resources:
   - ./externalsecret.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
+# Keep these patches here: cluster-apps replaces the Flux spec.patches list.
+# New volumes start empty instead of restoring old application data.
+patches:
+  - target:
+      kind: PersistentVolumeClaim
+    patch: |-
+      - op: remove
+        path: /spec/dataSourceRef
+  - patch: |-
+      $patch: delete
+      apiVersion: volsync.backube/v1alpha1
+      kind: ReplicationDestination
+      metadata:
+        name: ${APP}-dst

@@ -1,0 +1,161 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: en-mov-q
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: en-mov-q
+  interval: 1h
+  values:
+    controllers:
+      en-mov-q:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/qbittorrent-libtorrentv1
+              tag: 5.3.0@sha256:74a9dd7824d960e1c3355ab07ba23c9946aa18236eebac0c51fe9f5cac35ff8f
+            env:
+              TZ: Australia/Sydney
+              QBT_WEBUI_PORT: &port 80
+              QBT_TORRENTING_PORT: 14859
+            probes:
+              # Match the existing qBittorrent probe budgets.
+              # See docs/runbooks/probe-tuning.md.
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v2/app/version
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v2/app/version
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v2/app/version
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 10
+                  failureThreshold: 60
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 100m
+              limits:
+                memory: 4Gi
+    defaultPodOptions:
+      annotations:
+        # Reserved in UniFi on the VPN network.
+        k8s.v1.cni.cncf.io/networks: |-
+          [{
+            "name": "vpn",
+            "namespace": "kube-system",
+            "ips": ["192.168.90.12/24"],
+            "mac": "72:b9:f5:3b:1c:2a"
+          }]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        hostnames:
+          - "{{ .Release.Name }}.igas.dev"
+        parentRefs:
+          - name: envoy-internal
+            namespace: network
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: *port
+    configMaps:
+      config:
+        data:
+          .qbt.toml: |-
+            [qbittorrent]
+            addr = "http://localhost:80"
+          # The image copies this only when the config PVC is empty.
+          qBittorrent.conf: |-
+            [AutoRun]
+            enabled=false
+            program=
+
+            [LegalNotice]
+            Accepted=true
+
+            [BitTorrent]
+            Session\CoalesceReadWrite=true
+            Session\DefaultSavePath=/k8s/downloads/en-mov-q
+            Session\Interface=net1
+            Session\InterfaceName=net1
+            Session\PieceExtentAffinity=true
+            Session\Port=14859
+            Session\ResumeDataStorageType=SQLite
+            Session\SuggestMode=true
+            Session\TempPath=/k8s/downloads/en-mov-q/incomplete
+            Session\TempPathEnabled=true
+
+            [Preferences]
+            Connection\PortRangeMin=14859
+            Connection\UPnP=false
+            General\Locale=en
+            General\UseRandomPort=false
+            WebUI\Address=*
+            WebUI\AuthSubnetWhitelist=10.42.0.0/16, 10.43.0.0/16, 192.168.0.0/20
+            WebUI\AuthSubnetWhitelistEnabled=true
+            WebUI\CSRFProtection=false
+            WebUI\HostHeaderValidation=false
+            WebUI\LocalHostAuth=false
+            WebUI\Port=80
+            WebUI\ServerDomains=*
+            WebUI\UseUPnP=false
+    persistence:
+      config:
+        existingClaim: "{{ .Release.Name }}"
+      config-file:
+        type: configMap
+        identifier: config
+        globalMounts:
+          - path: /config/.qbt.toml
+            subPath: .qbt.toml
+          - path: /defaults/qBittorrent.conf
+            subPath: qBittorrent.conf
+            readOnly: true
+      tmp:
+        type: emptyDir
+      k8s:
+        type: nfs
+        server: 192.168.3.5
+        path: /volume2/k8s

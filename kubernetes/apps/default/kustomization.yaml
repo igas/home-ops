@@ -12,6 +12,8 @@ resources:
   - ./autopulse/ks.yaml
   - ./changedetection/ks.yaml
   - ./echo/ks.yaml
+  - ./en-mov-q/ks.yaml
+  - ./en-tv-q/ks.yaml
   - ./home-assistant/ks.yaml
   - ./kometa/ks.yaml
   - ./mosquitto/ks.yaml
@@ -21,6 +23,7 @@ resources:
   - ./qui/ks.yaml
   - ./radarr/ks.yaml
   - ./recyclarr/ks.yaml
+  - ./ru-mov-q/ks.yaml
   - ./ru-radarr/ks.yaml
   - ./sonarr/ks.yaml
   - ./zigbee/ks.yaml

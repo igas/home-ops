@@ -12,19 +12,6 @@ spec:
       namespace: rook-ceph
   interval: 1h
   path: ./kubernetes/apps/default/ru-radarr/app
-  # Start with an empty volume, even if backups from the old instance exist.
-  patches:
-    - target:
-        kind: PersistentVolumeClaim
-      patch: |-
-        - op: remove
-          path: /spec/dataSourceRef
-    - patch: |-
-        $patch: delete
-        apiVersion: volsync.backube/v1alpha1
-        kind: ReplicationDestination
-        metadata:
-          name: ${APP}-dst
   postBuild:
     substitute:
       APP: ru-radarr

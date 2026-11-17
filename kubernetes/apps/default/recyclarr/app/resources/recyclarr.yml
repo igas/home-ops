@@ -69,3 +69,20 @@ radarr:
           - f537cf427b64c38c8e36298f657e4828 # Scene
         assign_scores_to:
           - trash_id: 0896c29d74de619df168d23b98104b22 # [SQP] SQP-1 (1080p)
+
+  ru-radarr:
+    base_url: http://ru-radarr.default.svc.cluster.local
+    api_key: !env_var RU_RADARR_API_KEY
+    delete_old_custom_formats: true
+    media_management:
+      propers_and_repacks: do_not_prefer
+    # Naming is managed in Radarr to preserve the Russian title formats.
+    quality_definition:
+      type: movie
+    quality_profiles:
+      - trash_id: d1d67249d3890e49bc12e275d989a7e9 # HD Bluray + WEB; Original language
+        name: RU Movies
+        # Allow Russian releases even when their release group has no guide score.
+        min_format_score: 0
+        reset_unmatched_scores:
+          enabled: true
