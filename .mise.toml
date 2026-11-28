@@ -18,7 +18,7 @@ FLUX_MCP_API_KEY = { value = "{{ exec(command='op read op://Kubernetes/flux-oper
 "aqua:budimanjojo/talhelper" = "3.1.17"
 "aqua:cilium/cilium-cli" = "0.20.3"
 "aqua:cli/cli" = "2.105.0"
-"aqua:cloudflare/cloudflared" = "2026.11.1"
+"aqua:cloudflare/cloudflared" = "2026.11.2"
 # Keep aligned with the CNPG operator. See docs/runbooks/talos-reboot.md.
 "aqua:cloudnative-pg/cloudnative-pg/kubectl-cnpg" = "1.30.2"
 "aqua:cue-lang/cue" = "0.17.1"
